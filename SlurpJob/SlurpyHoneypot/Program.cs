@@ -11,8 +11,7 @@ namespace SlurpyHoneypot
         public static async Task Main(string[] args)
         {
             var configuration = new Configuration();
-            var logger = new InfluxDbLogger(configuration.GetSetting<string>("InfluxDbConnectionString"));
-
+            var logger = new InfluxDbLogger(configuration.GetSetting<string>("InfluxDbConnectionString"),"bucket_here","org_here");
             var allPorts = Enumerable.Range(1, 65535).ToList();
             var usedTcpPorts = GetUsedTcpPorts();
             var usedUdpPorts = GetUsedUdpPorts();
@@ -20,7 +19,7 @@ namespace SlurpyHoneypot
             var tcpPorts = allPorts.Except(usedTcpPorts).ToList();
             var udpPorts = allPorts.Except(usedUdpPorts).ToList();
 
-            var connectionHandler = new ConnectionHandler(logger);
+            var connectionHandler = new ConnectionHandler(logger,new DataLimiter(1_000_000));
             var portListener = new PortListener(
                 tcpPorts,
                 udpPorts,

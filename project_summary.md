@@ -30,8 +30,11 @@ By following this plan, we can create a comprehensive honeypot and monitoring so
 
 ## few additional key points : 
 1. We want the honeypot to capture all incoming traffic, including legitimate requests to the dashboard.
-2. The honeypot application will be responsible for handling SSL/TLS termination for incoming HTTPS requests and forwarding legitimate requests to the ASP.NET Core application.
+2. The honeypot application will be responsible for handling SSL/TLS termination for incoming HTTPS requests and forwarding legitimate requests to the ASP.NET Core application. The honeypot application will use a single SSL certificate for handling all incoming HTTPS requests. 
 3. The preliminary plan is to use HTTP for communication between the honeypot application and the ASP.NET Core application, as the latter will not be directly exposed to the internet.
+
+## Performance Requirements
+The honeypot application is not expected to handle a large number of concurrent connections. Response times are not critical, and the expected rate of incoming connections is low (a few connections per minute). As a result, the primary focus should be on the application's security and maintainability, rather than optimizing for high performance and scalability.
 
 # Implementation
 
@@ -41,29 +44,12 @@ By following this plan, we can create a comprehensive honeypot and monitoring so
 
 The application will be running on a single EC2 instance.
 
-Great! Now that you've completed steps 1, 2, and 3, let's dive into step 4, implementing the Listener Setup class, in more detail.
-
 In the basic implementation plan of the HoneyPot app(the program name and namespace is "SlurpyHoneypot"), you have defined the following classes and their functions. These might all be modified if you find out there is a better solution, considering the criteria.
 
 `HoneypotApp`:
    - `public async Task Initialize()`: Initializes the application by loading the configuration and setting up the required components.
    - `public async Task Run()`: Starts the application by launching the `PortListener` instances and managing the lifecycle of the application.
    - `public async Task Shutdown()`: Shuts down the application by stopping the `PortListener` instances and performing any necessary cleanup tasks.
-
-`PortListener`:
-   - `public PortListener(List<int> tcpPorts, List<int> udpPorts)`: Constructor that initializes the `PortListener` with the specified TCP and UDP ports to listen on.
-   - `public async Task StartListening()`: Starts listening for incoming TCP and UDP connections on the specified ports.
-   - `public async Task StopListening()`: Stops listening for incoming connections and cleans up any ongoing connection handling tasks.
-
-`ConnectionHandler`:
-   - `public async Task HandleTcpConnection(TcpClient client)`: Processes an incoming TCP connection, performs SSL/TLS termination if necessary, analyzes the request, and forwards legitimate requests to the ASP.NET Core application.
-   - `public async Task HandleUdpConnection(UdpClient client, IPEndPoint remoteEndPoint, byte[] receivedData)`: Processes an incoming UDP datagram, analyzes the request, and logs any attack attempts.
-
-
-`PortListener`:
-   - `public PortListener(ProtocolType protocol)`: Constructor that initializes the `PortListener` with the specified protocol (TCP or UDP).
-   - `public async Task StartListening()`: Starts listening for incoming TCP or UDP connections on all possible ports.
-   - `public async Task StopListening()`: Stops listening for incoming connections and cleans up any ongoing connection handling tasks.
 
 `DataLimiter`:
    - `public DataLimiter(int maxDataSize)`: Constructor that initializes the `DataLimiter` with the specified maximum data size (1 MB in this case).
@@ -78,15 +64,34 @@ In the basic implementation plan of the HoneyPot app(the program name and namesp
    - `public async Task LogConnection(ConnectionDetails connectionDetails)`: Logs the details of an incoming connection (e.g., source IP, timestamp, protocol, port number) in InfluxDB.
    - `public async Task LogAttack(AttackDetails attackDetails)`: Logs the details of an attack attempt (e.g., source IP, timestamp, attack type, payload) in InfluxDB.
 
-`Configuration`:
-   - `public Configuration()`: Constructor that initializes the `Configuration` class and loads settings from a configuration file or environment variables.
-   - `public T GetSetting<T>(string settingName)`: Retrieves the value of the specified setting and returns it as the requested type.
-
 `SSLTerminator`:
    - `public SSLTerminator()`: Constructor that initializes the `SSLTerminator` with any required settings, such as SSL certificates.
    - `public async Task<HttpRequest> TerminateSSL(Stream networkStream)`: Accepts a `Stream` (e.g., from a `TcpClient`) and handles the SSL/TLS termination to extract the underlying `HttpRequest`.
 
-`ConnectionLimiter`: The `ConnectionLimiter` class will work together with the `ConnectionHandler` to enforce data size limits on incoming connections and manage their termination.
-   - `public ConnectionLimiter(int maxDataSize)`: Constructor that initializes the `ConnectionLimiter` with the specified maximum data size (1 MB in this case).
-   - `public async Task<Stream> LimitConnection(TcpClient client)`: Takes a `TcpClient` object, enforces the data size limit, and returns a limited `Stream` that can be used for further processing. If the data size limit is reached, the connection will be terminated automatically.
-   - `public void TerminateConnection(TcpClient client)`: Closes the specified `TcpClient` connection.
+   Here is a summary of the classes along with their short descriptions and function signatures:
+
+`Configuration`:
+    - Handles loading and retrieving settings from a configuration file or environment variables.
+    - `public T GetSetting<T>(string settingName)`: Retrieves the value of the specified setting and returns it as the requested type.
+
+`ConnectionDetails`:
+    - Represents the details of a logged connection, including the remote endpoint, protocol, data size, partial data, data hash, and timestamp.
+    - No methods, only properties.
+
+`ConnectionHandler`:
+    - Processes incoming TCP and UDP connections, logs connection data, and handles SSL/TLS termination and request forwarding for legitimate connections.
+    - `public async Task HandleTcpConnection(TcpClient client)`: Processes an incoming TCP connection, logs the data, and calls mock methods for SSL/TLS termination and request forwarding.
+    - `public async Task HandleUdpConnection(UdpClient client, IPEndPoint remoteEndPoint, byte[] receivedData)`: Processes an incoming UDP datagram, logs the data, and calls a mock method for request analysis.
+    - `private async Task LogConnectionData(TcpClient client, byte[] data)`: Logs the connection details, including the remote endpoint, protocol, data size, partial data, data hash, and timestamp.
+
+`PortListener`:
+    - Listens for incoming TCP and UDP connections on specified ports and forwards them to the `ConnectionHandler` for processing.
+    - `public PortListener(ProtocolType protocol)`: Constructor that initializes the `PortListener` with the specified protocol (TCP or UDP).
+    - `public async Task StartListening()`: Starts listening for incoming TCP or UDP connections on all possible ports.
+    - `public async Task StopListening()`: Stops listening for incoming connections and cleans up any ongoing connection handling tasks.
+
+`Program` :
+    - The main class that initializes, runs, and shuts down the honeypot application.
+    - `public async Task Initialize()`: Initializes the application by loading the configuration and setting up the required components.
+    - `public async Task Run()`: Starts the application by launching the `PortListener` instances and managing the lifecycle of the application.
+    - `public async Task Shutdown()`: Shuts down the application by stopping the `PortListener` instances and performing any necessary cleanup tasks.

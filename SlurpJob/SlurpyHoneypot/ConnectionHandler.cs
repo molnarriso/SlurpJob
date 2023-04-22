@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace SlurpyHoneypot
@@ -110,7 +111,7 @@ namespace SlurpyHoneypot
                 Timestamp = DateTime.UtcNow
             };
 
-            await _influxDbLogger.LogConnection(connectionDetails);
+            await _influxDbLogger.LogEvent(connectionDetails,"connection");
         }
     }
 }

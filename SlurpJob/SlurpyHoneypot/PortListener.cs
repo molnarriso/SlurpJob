@@ -17,16 +17,18 @@ namespace SlurpyHoneypot
         private readonly List<int> _udpPorts;
         private readonly TcpConnectionHandlerDelegate _tcpConnectionHandler;
         private readonly UdpConnectionHandlerDelegate _udpConnectionHandler;
-        private readonly ILogger _logger;
+        private readonly InfluxDbLogger _logger;
         private CancellationTokenSource _cancellationTokenSource;
+        private readonly RateLimiter _rateLimiter;
 
-        public PortListener(List<int> tcpPorts, List<int> udpPorts, TcpConnectionHandlerDelegate tcpConnectionHandler, UdpConnectionHandlerDelegate udpConnectionHandler, ILogger logger)
+        public PortListener(List<int> tcpPorts, List<int> udpPorts, TcpConnectionHandlerDelegate tcpConnectionHandler, UdpConnectionHandlerDelegate udpConnectionHandler, InfluxDbLogger logger)
         {
             _tcpPorts = tcpPorts;
             _udpPorts = udpPorts;
             _tcpConnectionHandler = tcpConnectionHandler;
             _udpConnectionHandler = udpConnectionHandler;
             _logger = logger;
+            _rateLimiter = new RateLimiter(maxConnectionsPerMinute: 10, timeWindow: TimeSpan.FromMinutes(1));
         }
 
         public async Task StartListening()

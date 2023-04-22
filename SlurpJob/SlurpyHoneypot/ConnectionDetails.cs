@@ -12,7 +12,7 @@ namespace SlurpyHoneypot
         public byte[] PartialData { get; init; }
         public string DataHash { get; init; }
 
-        public ConnectionDetails() { }
+        public ConnectionDetails() {}
         public ConnectionDetails(IPEndPoint remoteEndPoint, DateTime timestamp, string protocol, int dataSize, byte[] partialData, string dataHash)
         {
             RemoteEndPoint = remoteEndPoint;
