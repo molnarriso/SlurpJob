@@ -43,7 +43,7 @@ The honeypot application is not expected to handle a large number of concurrent 
 3. Maintainability: Develop the application with a well-structured and organized codebase. Use clear naming conventions, comments, and documentation to make it easy for other developers to understand and maintain the code.
 
 The application will be running on a single EC2 instance.
-
+The application name and namespace is SlurpyHoneypot.
 In the basic implementation plan of the HoneyPot app(the program name and namespace is "SlurpyHoneypot"), you have defined the following classes and their functions. These might all be modified if you find out there is a better solution, considering the criteria.
 
 `HoneypotApp`:

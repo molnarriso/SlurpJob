@@ -26,7 +26,7 @@ Interested in joining the world of digital beekeeping? Fork the repo, make some 
 
 ## License
 
-This project is licensed under the Apache License 2.0, so feel free to share the fun
+This project is licensed under the Apache License 2.0, so feel free to share the fun.
 
 ## A Word of Caution
 
