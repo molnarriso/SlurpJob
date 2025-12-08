@@ -487,3 +487,5 @@ FodyWeavers.xsd
 
 *.pem
 *.ppk
+
+publish_arm64/*
