@@ -63,13 +63,13 @@ public class TcpSponge
 
                 if (remoteEp == null || originalEp == null) return;
 
-                // Read up to 32KB
+                // Read up to 32KB (Peek)
                 var stream = client.GetStream();
                 var buffer = new byte[32 * 1024];
                 
-                // 5s timeout to receive data
+                // 2s timeout to receive initial data (fast fail for scanners)
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                cts.CancelAfter(TimeSpan.FromSeconds(5)); 
+                cts.CancelAfter(TimeSpan.FromSeconds(2)); 
 
                 int bytesRead = 0;
                 try 
@@ -78,7 +78,7 @@ public class TcpSponge
                 }
                 catch (OperationCanceledException) 
                 {
-                    // Timeout or cancelled, just process what we have (or nothing)
+                    // Timeout or cancelled
                 }
 
                 var payload = new byte[bytesRead];
@@ -93,14 +93,72 @@ public class TcpSponge
                     Timestamp = DateTime.UtcNow
                 };
 
+                // Notify Ingestion (Log everything)
                 OnConnectionReceived?.Invoke(data);
+
+                // PROXY LOGIC
+                // Only proxy if:
+                // 1. Target Port is 80 (HTTP)
+                // 2. We have data
+                // 3. Data looks like HTTP (GET/POST/etc)
+                if (originalEp.Port == 80 && bytesRead > 0 && IsHttp(payload))
+                {
+                    await ProxyToBackend(client, payload, token);
+                }
             }
             catch (Exception ex)
             {
-                // Swallow exceptions to keep sponge alive
                 // Console.WriteLine($"Client Error: {ex.Message}");
             }
         }
+    }
+
+    private bool IsHttp(byte[] data)
+    {
+        if (data.Length < 4) return false;
+        // Simple check for common HTTP verbs
+        var s = System.Text.Encoding.ASCII.GetString(data, 0, Math.Min(data.Length, 10));
+        return s.StartsWith("GET ") || s.StartsWith("POST ") || s.StartsWith("HEAD ") || 
+               s.StartsWith("PUT ") || s.StartsWith("DELETE ") || s.StartsWith("OPTIONS ");
+    }
+
+    private async Task ProxyToBackend(TcpClient client, byte[] initialPayload, CancellationToken token)
+    {
+        try
+        {
+            using var backend = new TcpClient();
+            // Connect to local Kestrel
+            await backend.ConnectAsync("127.0.0.1", 5000, token);
+            
+            var backendStream = backend.GetStream();
+            var clientStream = client.GetStream();
+
+            // Forward initial payload
+            await backendStream.WriteAsync(initialPayload, token);
+
+            // Bi-directional copy
+            // We use a larger timeout for the tunnel
+            using var tunnelCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            
+            var clientToBackend = CopyStream(clientStream, backendStream, tunnelCts.Token);
+            var backendToClient = CopyStream(backendStream, clientStream, tunnelCts.Token);
+
+            await Task.WhenAny(clientToBackend, backendToClient);
+            tunnelCts.Cancel(); // Cancel the other direction
+        }
+        catch
+        {
+            // Proxy error, close connection
+        }
+    }
+
+    private async Task CopyStream(NetworkStream source, NetworkStream destination, CancellationToken token)
+    {
+        try
+        {
+            await source.CopyToAsync(destination, token);
+        }
+        catch { }
     }
 }
 
