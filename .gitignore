@@ -484,3 +484,5 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+*.pem
