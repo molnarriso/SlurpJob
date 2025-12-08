@@ -1,0 +1,69 @@
+@using SlurpJob.Services
+@using SlurpJob.Models
+@inject MemoryStore MemoryStore
+@implements IDisposable
+
+<div class="card bg-dark text-light h-100">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Live Feed</h5>
+    </div>
+    <div class="card-body p-0 overflow-auto" style="height: 600px;">
+        <div class="list-group list-group-flush">
+            @foreach (var evt in _events)
+            {
+                <button type="button" class="list-group-item list-group-item-action bg-dark text-light border-secondary" @onclick="() => OnEventClick(evt)">
+                    <div class="d-flex w-100 justify-content-between">
+                        <small class="text-muted">@evt.Timestamp.ToString("HH:mm:ss")</small>
+                        <small class="text-info">@evt.Protocol</small>
+                    </div>
+                    <div class="mb-1 text-truncate">
+                        <span class="fw-bold text-warning">[@evt.SourceCountry]</span>
+                        <span class="mx-1">&rarr;</span>
+                        <span class="text-danger">Port @evt.TargetPort</span>
+                    </div>
+                    <small class="text-muted font-monospace d-block text-truncate">
+                        @GetPayloadSnippet(evt)
+                    </small>
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<LiveEvent> _events = new();
+    private System.Threading.Timer? _timer;
+
+    [Parameter] public EventCallback<LiveEvent> OnEventSelected { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _timer = new System.Threading.Timer(RefreshFeed, null, 0, 1000);
+    }
+
+    private void RefreshFeed(object? state)
+    {
+        _events = MemoryStore.GetLiveFeed().ToList();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetPayloadSnippet(LiveEvent evt)
+    {
+        if (evt.PayloadSnippet == null || evt.PayloadSnippet.Length == 0) return "<empty>";
+        
+        // Convert snippet to safe string
+        var text = System.Text.Encoding.ASCII.GetString(evt.PayloadSnippet);
+        var clean = new string(text.Select(c => char.IsControl(c) ? '.' : c).ToArray());
+        return clean;
+    }
+
+    private void OnEventClick(LiveEvent evt)
+    {
+        OnEventSelected.InvokeAsync(evt);
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

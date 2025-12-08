@@ -1,0 +1,69 @@
+@using SlurpJob.Models
+
+@if (Show)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" style="display: block;">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Payload Inspector</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                </div>
+                <div class="modal-body font-monospace">
+                    <div class="row">
+                        <div class="col-md-6 border-end border-secondary">
+                            <h6 class="text-muted border-bottom border-secondary pb-2">Hex Dump</h6>
+                            <pre class="text-info" style="white-space: pre-wrap;">@HexDump</pre>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted border-bottom border-secondary pb-2">ASCII Representation</h6>
+                            <pre class="text-success" style="white-space: pre-wrap;">@AsciiDump</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    public bool Show { get; private set; }
+    public string HexDump { get; private set; } = "";
+    public string AsciiDump { get; private set; } = "";
+
+    public void Open(byte[] payload)
+    {
+        if (payload == null || payload.Length == 0)
+        {
+            HexDump = "<empty>";
+            AsciiDump = "<empty>";
+        }
+        else
+        {
+            HexDump = BitConverter.ToString(payload).Replace("-", " ");
+            AsciiDump = FormatAscii(payload);
+        }
+        Show = true;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        Show = false;
+        StateHasChanged();
+    }
+
+    private string FormatAscii(byte[] data)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var b in data)
+        {
+            if (b >= 32 && b <= 126)
+                sb.Append((char)b);
+            else
+                sb.Append('.');
+        }
+        return sb.ToString();
+    }
+}

@@ -1,0 +1,22 @@
+[Unit]
+Description=SlurpJob Network Telescope
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/opt/slurpjob
+ExecStart=/opt/slurpjob/SlurpJob
+Restart=always
+RestartSec=5
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://0.0.0.0:80
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+# No root privileges needed for ports 9000/9001
+# But Panic Button (iptables) needs sudo or capability.
+# To allow 'iptables' without full root, we might need sudoers or CAP_NET_ADMIN.
+# For simplicity in Phase 1, we might run as root or configure sudoers.
+# AmbientCapabilities=CAP_NET_ADMIN
+
+[Install]
+WantedBy=multi-user.target

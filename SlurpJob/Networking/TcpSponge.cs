@@ -1,0 +1,114 @@
+using System.Net;
+using System.Net.Sockets;
+
+namespace SlurpJob.Networking;
+
+public class TcpSponge
+{
+    private readonly int _port;
+    private TcpListener? _listener;
+    
+    // Event to notify ingestion service
+    public event Action<TcpConnectionData>? OnConnectionReceived;
+
+    public TcpSponge(int port = 9000)
+    {
+        _port = port;
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _listener = new TcpListener(IPAddress.Any, _port);
+        _listener.Start();
+        Console.WriteLine($"TCP Sponge listening on port {_port}");
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var client = await _listener.AcceptTcpClientAsync(cancellationToken);
+                _ = HandleClientAsync(client, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Graceful shutdown
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"TCP Sponge Error: {ex.Message}");
+        }
+        finally
+        {
+            _listener.Stop();
+        }
+    }
+
+    private async Task HandleClientAsync(TcpClient client, CancellationToken token)
+    {
+        using (client)
+        {
+            try
+            {
+                var socket = client.Client;
+                var remoteEp = socket.RemoteEndPoint as IPEndPoint;
+                var originalEp = LinuxInterop.GetOriginalDestination(socket);
+                
+                // Fallback for non-Linux or failed lookup
+                if (originalEp == null)
+                {
+                     var local = socket.LocalEndPoint as IPEndPoint;
+                     originalEp = local;
+                }
+
+                if (remoteEp == null || originalEp == null) return;
+
+                // Read up to 32KB
+                var stream = client.GetStream();
+                var buffer = new byte[32 * 1024];
+                
+                // 5s timeout to receive data
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                cts.CancelAfter(TimeSpan.FromSeconds(5)); 
+
+                int bytesRead = 0;
+                try 
+                {
+                    bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cts.Token);
+                }
+                catch (OperationCanceledException) 
+                {
+                    // Timeout or cancelled, just process what we have (or nothing)
+                }
+
+                var payload = new byte[bytesRead];
+                Array.Copy(buffer, payload, bytesRead);
+
+                var data = new TcpConnectionData
+                {
+                    SourceIp = remoteEp.Address,
+                    SourcePort = remoteEp.Port,
+                    OriginalTargetPort = originalEp.Port,
+                    Payload = payload,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                OnConnectionReceived?.Invoke(data);
+            }
+            catch (Exception ex)
+            {
+                // Swallow exceptions to keep sponge alive
+                // Console.WriteLine($"Client Error: {ex.Message}");
+            }
+        }
+    }
+}
+
+public class TcpConnectionData
+{
+    public IPAddress SourceIp { get; set; } = IPAddress.None;
+    public int SourcePort { get; set; }
+    public int OriginalTargetPort { get; set; }
+    public byte[] Payload { get; set; } = Array.Empty<byte>();
+    public DateTime Timestamp { get; set; }
+}

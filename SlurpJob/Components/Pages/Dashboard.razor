@@ -1,0 +1,119 @@
+@page "/"
+@using SlurpJob.Components
+@using SlurpJob.Models
+@using SlurpJob.Services
+@inject IJSRuntime JS
+@inject MemoryStore MemoryStore
+@implements IDisposable
+
+<PageTitle>SlurpJob Dashboard</PageTitle>
+
+<div class="container-fluid vh-100 d-flex flex-column overflow-hidden p-0">
+    <div class="row flex-grow-1 overflow-hidden m-0">
+        <!-- Live Feed (Left) -->
+        <div class="col-md-3 h-100 p-0 border-end border-secondary">
+            <LiveFeed OnEventSelected="ShowPayload" />
+        </div>
+
+        <!-- Globe (Center) -->
+        <div class="col-md-6 h-100 p-0 position-relative bg-black">
+            <div id="globeViz" style="width: 100%; height: 100%;"></div>
+            <div class="position-absolute top-0 start-0 p-3 pointer-events-none">
+                <h1 class="display-6 text-light" style="text-shadow: 0 0 10px #0ff; font-family: 'Courier New', monospace;">SLURPJOB</h1>
+                <div class="text-muted small">Network Telescope Active</div>
+            </div>
+        </div>
+
+        <!-- Intelligence (Right) -->
+        <div class="col-md-3 h-100 p-2 bg-dark text-light border-start border-secondary overflow-auto">
+             <h5 class="border-bottom border-secondary pb-2 mb-3">Intelligence</h5>
+             
+             <div class="card bg-dark border-info text-info mb-3">
+                 <div class="card-body">
+                     <h6 class="card-title">Active Dossiers</h6>
+                     <p class="card-text display-6">@MemoryStore.GetDossiers().Count()</p>
+                 </div>
+             </div>
+
+             <div class="card bg-dark border-warning text-warning mb-3">
+                 <div class="card-body">
+                     <h6 class="card-title">Recent Events (1m)</h6>
+                     <p class="card-text display-6">@MemoryStore.GetLiveFeed().Count()</p>
+                 </div>
+             </div>
+        </div>
+    </div>
+</div>
+
+<PayloadInspector @ref="_inspector" />
+
+@code {
+    private PayloadInspector _inspector = default!;
+    private System.Threading.Timer? _globeTimer;
+    private Random _rnd = new Random();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("slurpGlobe.init", "globeViz");
+            _globeTimer = new System.Threading.Timer(UpdateGlobe, null, 1000, 2000);
+        }
+    }
+
+    private async void UpdateGlobe(object? state)
+    {
+        // Get recent events from MemoryStore
+        var events = MemoryStore.GetLiveFeed().Take(20).ToList();
+        var arcs = new List<object>();
+
+        // Server Location (Approximate, e.g. AWS US-East)
+        // Ideally configurable. Let's assume 38.0, -77.0 (Virginia)
+        double serverLat = 38.0;
+        double serverLng = -77.0;
+
+        foreach (var evt in events)
+        {
+            if (evt.Latitude.HasValue && evt.Longitude.HasValue)
+            {
+                string color = evt.Protocol == "TCP" ? "#ff0000" : "#00ff00"; // Red TCP, Green UDP
+                
+                arcs.Add(new 
+                {
+                    startLat = evt.Latitude.Value,
+                    startLng = evt.Longitude.Value,
+                    endLat = serverLat,
+                    endLng = serverLng,
+                    color = color
+                });
+            }
+        }
+
+        await InvokeAsync(async () => 
+        {
+            await JS.InvokeVoidAsync("slurpGlobe.updateArcs", arcs);
+        });
+    }
+
+    private void ShowPayload(LiveEvent evt)
+    {
+        // Try to find full payload in Dossier if Hash is present
+        byte[] payload = evt.PayloadSnippet;
+        
+        if (!string.IsNullOrEmpty(evt.PayloadHash))
+        {
+            var dossier = MemoryStore.GetDossiers().FirstOrDefault(d => d.PayloadHash == evt.PayloadHash);
+            if (dossier != null)
+            {
+                payload = dossier.PayloadData;
+            }
+        }
+
+        _inspector.Open(payload);
+    }
+
+    public void Dispose()
+    {
+        _globeTimer?.Dispose();
+    }
+}
