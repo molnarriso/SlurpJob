@@ -8,9 +8,9 @@ public class MemoryStore
     // Key: PayloadHash
     private readonly ConcurrentDictionary<string, AttackDossier> _dossiers = new();
     
-    // Circular Buffer for Live Feed (Fixed size 100)
+    // Circular Buffer for Live Feed (Fixed size 500)
     private readonly ConcurrentQueue<LiveEvent> _liveFeed = new();
-    private const int MaxLiveFeedSize = 100;
+    private const int MaxLiveFeedSize = 500;
 
     // OOM Protection
     private const long MaxMemoryBytes = 900 * 1024 * 1024; // 900MB
@@ -24,6 +24,20 @@ public class MemoryStore
             Protocol = "MIXED",
             PayloadData = System.Text.Encoding.UTF8.GetBytes("MEMORY OVERFLOW - DROPPED PAYLOADS")
         };
+    }
+
+    public void LoadHistory(IEnumerable<LiveEvent> history)
+    {
+        foreach (var evt in history)
+        {
+            _liveFeed.Enqueue(evt);
+        }
+        
+        // Trim if needed
+        while (_liveFeed.Count > MaxLiveFeedSize)
+        {
+            _liveFeed.TryDequeue(out _);
+        }
     }
 
     public void AddEvent(LiveEvent evt, string payloadHash, byte[] fullPayload, string? sni)

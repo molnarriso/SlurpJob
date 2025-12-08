@@ -38,13 +38,41 @@
 
     protected override void OnInitialized()
     {
-        _timer = new System.Threading.Timer(RefreshFeed, null, 0, 1000);
+        Console.WriteLine("LiveFeed: OnInitialized");
     }
 
-    private void RefreshFeed(object? state)
+    protected override void OnAfterRender(bool firstRender)
     {
-        _events = MemoryStore.GetLiveFeed().ToList();
-        InvokeAsync(StateHasChanged);
+        if (firstRender)
+        {
+            Console.WriteLine("LiveFeed: OnAfterRender (First) - Starting Timer");
+            // Start timer only after first render to ensure circuit is ready
+            _timer = new System.Threading.Timer(RefreshFeed, null, 0, 1000);
+        }
+    }
+
+    private async void RefreshFeed(object? state)
+    {
+        try
+        {
+            // Console.WriteLine("LiveFeed: Timer Tick"); // Commented out to avoid spam, but useful if needed
+            var events = MemoryStore.GetLiveFeed().ToList();
+            
+            // Update state on the UI thread to avoid race conditions
+            await InvokeAsync(() => 
+            {
+                if (events.Count != _events.Count)
+                {
+                    Console.WriteLine($"LiveFeed: Updating UI with {events.Count} events (was {_events.Count})");
+                    _events = events;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"LiveFeed Error: {ex.Message}");
+        }
     }
 
     private string GetPayloadSnippet(LiveEvent evt)

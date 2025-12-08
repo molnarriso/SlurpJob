@@ -153,5 +153,10 @@ public class IngestionService : BackgroundService
 
         // 5. Push to MemoryStore
         _memoryStore.AddEvent(evt, hashInput, payload, sni);
+        
+        if (protocol == "TCP" && targetPort == 80)
+        {
+            Console.WriteLine($"Ingestion: Processed HTTP event from {sourceIp} (Hash: {hashInput})");
+        }
     }
 }

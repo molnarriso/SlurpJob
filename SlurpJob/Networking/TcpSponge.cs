@@ -81,6 +81,8 @@ public class TcpSponge
                     // Timeout or cancelled
                 }
 
+                Console.WriteLine($"TcpSponge: {remoteEp} -> {originalEp} ({bytesRead} bytes)");
+
                 var payload = new byte[bytesRead];
                 Array.Copy(buffer, payload, bytesRead);
 
@@ -97,29 +99,21 @@ public class TcpSponge
                 OnConnectionReceived?.Invoke(data);
 
                 // PROXY LOGIC
-                // Only proxy if:
-                // 1. Target Port is 80 (HTTP)
-                // 2. We have data
-                // 3. Data looks like HTTP (GET/POST/etc)
-                if (originalEp.Port == 80 && bytesRead > 0 && IsHttp(payload))
+                if (originalEp.Port == 80 && bytesRead > 0)
                 {
+                    Console.WriteLine($"TcpSponge: Proxying {remoteEp} to Backend");
                     await ProxyToBackend(client, payload, token);
+                }
+                else if (originalEp.Port == 80)
+                {
+                     Console.WriteLine($"TcpSponge: NOT Proxying {remoteEp} (Bytes: {bytesRead})");
                 }
             }
             catch (Exception ex)
             {
-                // Console.WriteLine($"Client Error: {ex.Message}");
+                 Console.WriteLine($"TcpSponge Error: {ex.Message}");
             }
         }
-    }
-
-    private bool IsHttp(byte[] data)
-    {
-        if (data.Length < 4) return false;
-        // Simple check for common HTTP verbs
-        var s = System.Text.Encoding.ASCII.GetString(data, 0, Math.Min(data.Length, 10));
-        return s.StartsWith("GET ") || s.StartsWith("POST ") || s.StartsWith("HEAD ") || 
-               s.StartsWith("PUT ") || s.StartsWith("DELETE ") || s.StartsWith("OPTIONS ");
     }
 
     private async Task ProxyToBackend(TcpClient client, byte[] initialPayload, CancellationToken token)

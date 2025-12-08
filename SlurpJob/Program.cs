@@ -13,6 +13,7 @@ builder.Services.AddSingleton<SlurpJob.Services.MemoryStore>();
 builder.Services.AddSingleton<SlurpJob.Services.IngestionService>();
 builder.Services.AddHostedService(p => p.GetRequiredService<SlurpJob.Services.IngestionService>());
 builder.Services.AddHostedService<SlurpJob.Services.PersistenceWorker>();
+builder.Services.AddHostedService<SlurpJob.Services.HistoryLoader>();
 builder.Services.AddHostedService<SlurpJob.Services.PanicService>();
 
 builder.Services.AddDbContext<SlurpJob.Data.SlurpContext>(options =>
