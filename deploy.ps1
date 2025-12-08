@@ -19,6 +19,9 @@ plink -batch -i $Key -ssh $User@$ServerIp "sudo systemctl stop slurpjob"
 Write-Host "3. Uploading Files..." -ForegroundColor Cyan
 pscp -batch -i $Key -r publish_arm64/* $User@$ServerIp`:$RemotePath
 
+Write-Host "3b. Downloading GeoIP Database (City)..." -ForegroundColor Cyan
+plink -batch -i $Key -ssh $User@$ServerIp "if [ ! -f $RemotePath/GeoLite2-City.mmdb ]; then sudo curl -L -o $RemotePath/GeoLite2-City.mmdb https://git.io/GeoLite2-City.mmdb; fi"
+
 Write-Host "4. Starting Service..." -ForegroundColor Cyan
 plink -batch -i $Key -ssh $User@$ServerIp "sudo chmod +x $RemotePath/SlurpJob && sudo systemctl start slurpjob"
 

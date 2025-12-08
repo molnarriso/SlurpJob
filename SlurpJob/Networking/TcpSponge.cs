@@ -67,9 +67,9 @@ public class TcpSponge
                 var stream = client.GetStream();
                 var buffer = new byte[32 * 1024];
                 
-                // 2s timeout to receive initial data (fast fail for scanners)
+                // 5s timeout to receive initial data (was 2s)
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                cts.CancelAfter(TimeSpan.FromSeconds(2)); 
+                cts.CancelAfter(TimeSpan.FromSeconds(5)); 
 
                 int bytesRead = 0;
                 try 
@@ -81,7 +81,7 @@ public class TcpSponge
                     // Timeout or cancelled
                 }
 
-                Console.WriteLine($"TcpSponge: {remoteEp} -> {originalEp} ({bytesRead} bytes)");
+                // Console.WriteLine($"TcpSponge: {remoteEp} -> {originalEp} ({bytesRead} bytes)");
 
                 var payload = new byte[bytesRead];
                 Array.Copy(buffer, payload, bytesRead);
@@ -101,12 +101,12 @@ public class TcpSponge
                 // PROXY LOGIC
                 if (originalEp.Port == 80 && bytesRead > 0)
                 {
-                    Console.WriteLine($"TcpSponge: Proxying {remoteEp} to Backend");
+                    // Console.WriteLine($"TcpSponge: Proxying {remoteEp} to Backend");
                     await ProxyToBackend(client, payload, token);
                 }
                 else if (originalEp.Port == 80)
                 {
-                     Console.WriteLine($"TcpSponge: NOT Proxying {remoteEp} (Bytes: {bytesRead})");
+                    Console.WriteLine($"TcpSponge: Dropped Port 80 connection from {remoteEp} (0 bytes read)");
                 }
             }
             catch (Exception ex)
@@ -120,7 +120,11 @@ public class TcpSponge
     {
         try
         {
+            client.NoDelay = true; // Disable Nagle
+
             using var backend = new TcpClient();
+            backend.NoDelay = true; // Disable Nagle
+
             // Connect to local Kestrel
             await backend.ConnectAsync("127.0.0.1", 5000, token);
             
@@ -131,7 +135,6 @@ public class TcpSponge
             await backendStream.WriteAsync(initialPayload, token);
 
             // Bi-directional copy
-            // We use a larger timeout for the tunnel
             using var tunnelCts = CancellationTokenSource.CreateLinkedTokenSource(token);
             
             var clientToBackend = CopyStream(clientStream, backendStream, tunnelCts.Token);
@@ -140,9 +143,9 @@ public class TcpSponge
             await Task.WhenAny(clientToBackend, backendToClient);
             tunnelCts.Cancel(); // Cancel the other direction
         }
-        catch
+        catch (Exception ex)
         {
-            // Proxy error, close connection
+            Console.WriteLine($"Proxy Error: {ex.Message}");
         }
     }
 

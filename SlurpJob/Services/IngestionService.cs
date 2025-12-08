@@ -29,7 +29,8 @@ public class IngestionService : BackgroundService
         _udpSponge = new UdpSponge(9001);
         
         // Configurable path, default to current dir or specific location
-        _geoDbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GeoLite2-Country.mmdb");
+        // Hardcoded for deployment stability
+        _geoDbPath = "/opt/slurpjob/GeoLite2-City.mmdb";
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -46,6 +47,7 @@ public class IngestionService : BackgroundService
     {
         try
         {
+            _logger.LogInformation($"Initializing GeoIP. Path: {_geoDbPath}");
             if (File.Exists(_geoDbPath))
             {
                 _geoReader = new DatabaseReader(_geoDbPath);
@@ -58,7 +60,7 @@ public class IngestionService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load MaxMind DB");
+            _logger.LogError(ex, $"Failed to load MaxMind DB at {_geoDbPath}");
         }
     }
 
