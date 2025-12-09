@@ -6,6 +6,9 @@ window.slurpMap2D = {
     countries: null,
     projection: null,
     animating: false,
+    hoveredCountry: null,
+    mouseX: 0,
+    mouseY: 0,
 
     // ISO Alpha-2 to Alpha-3 mapping (same as globe)
     iso2to3: {
@@ -30,6 +33,10 @@ window.slurpMap2D = {
 
         this.ctx = this.canvas.getContext('2d');
         this.resize();
+
+        // Add mouse event listeners for interactivity
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        this.canvas.addEventListener('mouseleave', () => this.handleMouseLeave());
 
         window.addEventListener('resize', () => this.resize());
 
@@ -71,6 +78,64 @@ window.slurpMap2D = {
         };
     },
 
+    handleMouseMove: function (e) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouseX = e.clientX - rect.left;
+        this.mouseY = e.clientY - rect.top;
+
+        // Find country under cursor
+        this.hoveredCountry = null;
+        if (this.countries && this.projection) {
+            for (const feature of this.countries) {
+                if (this.isPointInCountry(this.mouseX, this.mouseY, feature.geometry)) {
+                    this.hoveredCountry = feature;
+                    this.canvas.style.cursor = 'pointer';
+                    return;
+                }
+            }
+        }
+        this.canvas.style.cursor = 'default';
+    },
+
+    handleMouseLeave: function () {
+        this.hoveredCountry = null;
+        this.canvas.style.cursor = 'default';
+    },
+
+    isPointInCountry: function (x, y, geometry) {
+        if (!geometry || !this.ctx) return false;
+
+        const checkPolygon = (coords) => {
+            this.ctx.beginPath();
+            let first = true;
+            coords.forEach(point => {
+                const [lon, lat] = point;
+                const [px, py] = this.projection.project(lon, lat);
+                if (first) {
+                    this.ctx.moveTo(px, py);
+                    first = false;
+                } else {
+                    this.ctx.lineTo(px, py);
+                }
+            });
+            this.ctx.closePath();
+            return this.ctx.isPointInPath(x, y);
+        };
+
+        if (geometry.type === 'Polygon') {
+            for (const ring of geometry.coordinates) {
+                if (checkPolygon(ring)) return true;
+            }
+        } else if (geometry.type === 'MultiPolygon') {
+            for (const polygon of geometry.coordinates) {
+                for (const ring of polygon) {
+                    if (checkPolygon(ring)) return true;
+                }
+            }
+        }
+        return false;
+    },
+
     animate: function () {
         if (!this.ctx) return;
 
@@ -110,7 +175,8 @@ window.slurpMap2D = {
                 const color = this.getHeatColor(count);
 
                 // Draw country polygon
-                this.drawCountry(feature.geometry, color);
+                const isHovered = this.hoveredCountry === feature;
+                this.drawCountry(feature.geometry, color, isHovered);
             });
         }
 
@@ -135,16 +201,28 @@ window.slurpMap2D = {
             ctx.lineTo(x, h);
             ctx.stroke();
         }
+
+        // Draw tooltip if hovering over a country
+        if (this.hoveredCountry) {
+            this.drawTooltip();
+        }
     },
 
-    drawCountry: function (geometry, fillColor) {
+    drawCountry: function (geometry, fillColor, isHovered) {
         const ctx = this.ctx;
 
         if (!geometry || !this.projection) return;
 
         ctx.fillStyle = fillColor;
-        ctx.strokeStyle = '#222';
-        ctx.lineWidth = 0.5;
+
+        // Highlight hovered country
+        if (isHovered) {
+            ctx.strokeStyle = '#0ff';
+            ctx.lineWidth = 2;
+        } else {
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 0.5;
+        }
 
         const drawPolygon = (coords) => {
             if (coords.length === 0) return;
@@ -176,6 +254,66 @@ window.slurpMap2D = {
                 polygon.forEach(ring => drawPolygon(ring));
             });
         }
+    },
+
+    drawTooltip: function () {
+        if (!this.hoveredCountry) return;
+
+        const ctx = this.ctx;
+        const props = this.hoveredCountry.properties || {};
+
+        // Get country name and code
+        const name = props.NAME || props.name || props.ADMIN || 'Unknown';
+        let iso2 = props.ISO_A2 || props.iso_a2;
+        if (!iso2) {
+            const iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3 || props.ADM0_A3;
+            iso2 = iso3 ? Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3) : null;
+        }
+
+        const count = iso2 ? (this.countryData[iso2] || 0) : 0;
+
+        // Format tooltip text
+        const line1 = name;
+        const line2 = `Attacks: ${count}`;
+
+        // Measure text
+        ctx.font = 'bold 14px Arial';
+        const width1 = ctx.measureText(line1).width;
+        ctx.font = '12px Arial';
+        const width2 = ctx.measureText(line2).width;
+        const maxWidth = Math.max(width1, width2);
+
+        // Tooltip dimensions
+        const padding = 8;
+        const tooltipWidth = maxWidth + padding * 2;
+        const tooltipHeight = 50;
+
+        // Position tooltip near cursor
+        let x = this.mouseX + 15;
+        let y = this.mouseY - 10;
+
+        // Keep tooltip in bounds
+        if (x + tooltipWidth > this.canvas.width) x = this.mouseX - tooltipWidth - 15;
+        if (y + tooltipHeight > this.canvas.height) y = this.canvas.height - tooltipHeight;
+        if (y < 0) y = 0;
+
+        // Draw tooltip background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(x, y, tooltipWidth, tooltipHeight);
+
+        // Draw border
+        ctx.strokeStyle = '#0ff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, tooltipWidth, tooltipHeight);
+
+        // Draw text
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(line1, x + padding, y + 20);
+
+        ctx.font = '12px Arial';
+        ctx.fillStyle = this.getHeatColor(count);
+        ctx.fillText(line2, x + padding, y + 38);
     },
 
     getHeatColor: function (count) {
