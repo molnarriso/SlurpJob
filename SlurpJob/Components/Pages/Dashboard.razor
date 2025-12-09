@@ -9,87 +9,56 @@
 <PageTitle>SlurpJob Dashboard</PageTitle>
 
 <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
     html, body {
         overflow: hidden !important;
         height: 100vh;
+        width: 100vw;
         margin: 0 !important;
         padding: 0 !important;
     }
     
-    .container-fluid {
-        padding: 0 !important;
-        margin: 0 !important;
+    .dashboard-container {
+        display: flex;
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
     }
-</style>
-
-<div class="container-fluid vh-100 d-flex flex-column p-0">
-    <div class="row flex-fill m-0" style="min-height: 0; max-height: calc(100vh - 220px);">
-        <!-- Live Feed (Left) -->
-        <div class="col-md-3 h-100 p-0 border-end border-secondary">
-            <LiveFeed OnEventSelected="ShowPayload" />
-        </div>
-
-        <!-- Visualization (Center) -->
-        <div class="col-md-6 h-100 p-0 position-relative bg-black">
-            @if (_isGlobeMode)
-            {
-                <div id="globeViz" style="width: 100%; height: 100%;"></div>
-            }
-            else
-            {
-                <canvas id="map2dCanvas" style="width: 100%; height: 100%;"></canvas>
-            }
-            
-            <!-- Header Overlay -->
-            <div class="position-absolute top-0 start-0 p-3 pointer-events-none">
-                <h1 class="display-6 text-light" style="text-shadow: 0 0 10px #0ff; font-family: 'Courier New', monospace;">SLURPJOB</h1>
-                <div class="text-secondary small">Network Telescope Active</div>
-            </div>
-            
-            <!-- Mode Toggle Buttons -->
-            <div class="position-absolute top-0 start-50 translate-middle-x p-3">
-                <div class="btn-group" role="group" style="pointer-events: auto;">
-                    <button class="btn btn-sm mode-btn @(_isGlobeMode ? "active" : "")" @onclick="() => SetMode(true)">
-                        🌍 Globe
-                    </button>
-                    <button class="btn btn-sm mode-btn @(!_isGlobeMode ? "active" : "")" @onclick="() => SetMode(false)">
-                        🗺️ 2D Map
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Intelligence (Right) -->
-        <div class="col-md-3 h-100 p-2 bg-dark text-light border-start border-secondary overflow-auto">
-             <h5 class="border-bottom border-secondary pb-2 mb-3">Intelligence</h5>
-             
-             <div class="card bg-dark border-info text-info mb-3">
-                 <div class="card-body">
-                     <h6 class="card-title">Active Dossiers</h6>
-                     <p class="card-text display-6">@MemoryStore.GetDossiers().Count()</p>
-                 </div>
-             </div>
-
-             <div class="card bg-dark border-warning text-warning mb-3">
-                 <div class="card-body">
-                     <h6 class="card-title">Recent Events</h6>
-                     <p class="card-text display-6">@MemoryStore.GetLiveFeed().Count()</p>
-                 </div>
-             </div>
-        </div>
-    </div>
     
-    <!-- Timeline Panel -->
-    <div class="row m-0" style="height: 220px;">
-        <div class="col-12 p-2">
-            <AttackTimeline />
-        </div>
-    </div>
-</div>
-
-<PayloadInspector @ref="_inspector" />
-
-<style>
+    .left-panel {
+        width: 60%;
+        height: 100vh;
+        background: #212529;
+        border-right: 1px solid #343a40;
+    }
+    
+    .right-panel {
+        width: 40%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .globe-panel {
+        flex: 1;
+        background: #000;
+        position: relative;
+        min-height: 0;
+    }
+    
+    .timeline-panel {
+        height: 220px;
+        background: #1a1d20;
+        border-top: 1px solid #343a40;
+        padding: 8px;
+    }
+    
     .mode-btn {
         background: rgba(13, 110, 253, 0.1);
         border: 1px solid rgba(13, 110, 253, 0.3);
@@ -117,6 +86,63 @@
         color: #fff;
     }
 </style>
+
+<div class="dashboard-container">
+    <!-- LEFT: Live Feed (60%) -->
+    <div class="left-panel">
+        <LiveFeed OnEventSelected="ShowPayload" />
+    </div>
+
+    <!-- RIGHT: Globe + Timeline (40%) -->
+    <div class="right-panel">
+        <!-- TOP: Globe/Map Visualization -->
+        <div class="globe-panel">
+            @if (_isGlobeMode)
+            {
+                <div id="globeViz" style="width: 100%; height: 100%;"></div>
+            }
+            else
+            {
+                <canvas id="map2dCanvas" style="width: 100%; height: 100%;"></canvas>
+            }
+            
+            <!-- Header Overlay -->
+            <div class="position-absolute top-0 start-0 p-3 pointer-events-none">
+                <h1 class="display-6 text-light" style="text-shadow: 0 0 10px #0ff; font-family: 'Courier New', monospace;">SLURPJOB</h1>
+                <div class="text-secondary small">Network Telescope Active</div>
+            </div>
+            
+            <!-- Mode Toggle (Centered) -->
+            <div class="position-absolute top-0 start-50 translate-middle-x p-3">
+                <div class="btn-group" role="group" style="pointer-events: auto;">
+                    <button class="btn btn-sm mode-btn @(_isGlobeMode ? "active" : "")" @onclick="() => SetMode(true)">
+                        🌍 Globe
+                    </button>
+                    <button class="btn btn-sm mode-btn @(!_isGlobeMode ? "active" : "")" @onclick="() => SetMode(false)">
+                        🗺️ 2D Map
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stats Overlay (Top Right) -->
+            <div class="position-absolute top-0 end-0 p-3 pointer-events-none">
+                <div class="text-info small mb-1">
+                    <strong>Dossiers:</strong> @MemoryStore.GetDossiers().Count()
+                </div>
+                <div class="text-warning small">
+                    <strong>Events:</strong> @MemoryStore.GetLiveFeed().Count()
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM: Timeline -->
+        <div class="timeline-panel">
+            <AttackTimeline />
+        </div>
+    </div>
+</div>
+
+<PayloadInspector @ref="_inspector" />
 
 @code {
     private PayloadInspector _inspector = default!;
@@ -174,11 +200,10 @@
 
     private async Task SetMode(bool isGlobeMode)
     {
-        if (_isGlobeMode == isGlobeMode) return; // Already in this mode
+        if (_isGlobeMode == isGlobeMode) return;
         
         _isGlobeMode = isGlobeMode;
         
-        // Dispose old visualization
         if (_isGlobeMode)
         {
             await JS.InvokeVoidAsync("slurpMap2D.dispose");
@@ -189,14 +214,9 @@
         }
         
         StateHasChanged();
-        
-        // Wait for DOM to update
         await Task.Delay(100);
-        
-        // Initialize new visualization
         await InitializeVisualization();
         
-        // Immediate update with current data
         var countryData = MemoryStore.GetCountryAttackCounts();
         if (_isGlobeMode)
         {
