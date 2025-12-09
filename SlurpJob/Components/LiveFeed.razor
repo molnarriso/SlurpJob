@@ -12,8 +12,8 @@
             @foreach (var evt in _events)
             {
                 <button type="button" class="list-group-item list-group-item-action bg-dark text-light border-secondary" @onclick="() => OnEventClick(evt)">
-                    <div class="d-flex w-100 justify-content-between">
-                        <small class="text-muted">@evt.Timestamp.ToString("HH:mm:ss")</small>
+                    <div class="d-flex w-100 justify-content-between align-items-start mb-1">
+                        <small class="text-secondary">@evt.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</small>
                         <small class="text-info">@evt.Protocol</small>
                     </div>
                     <div class="mb-1 text-truncate">
@@ -21,8 +21,13 @@
                         <span class="mx-1">&rarr;</span>
                         <span class="text-danger">Port @evt.TargetPort</span>
                     </div>
-                    <small class="text-muted font-monospace d-block text-truncate">
-                        @GetPayloadSnippet(evt)
+                    <div class="mb-1">
+                        <small class="text-secondary font-monospace d-block text-truncate">
+                            @GetPayloadSnippet(evt, 60)
+                        </small>
+                    </div>
+                    <small class="text-secondary">
+                        Size: <span class="text-info">@GetPayloadSize(evt) bytes</span>
                     </small>
                 </button>
             }
@@ -75,14 +80,26 @@
         }
     }
 
-    private string GetPayloadSnippet(LiveEvent evt)
+    private string GetPayloadSnippet(LiveEvent evt, int maxLength = 40)
     {
         if (evt.PayloadSnippet == null || evt.PayloadSnippet.Length == 0) return "<empty>";
         
         // Convert snippet to safe string
         var text = System.Text.Encoding.ASCII.GetString(evt.PayloadSnippet);
         var clean = new string(text.Select(c => char.IsControl(c) ? '.' : c).ToArray());
+        
+        // Truncate to maxLength if needed
+        if (clean.Length > maxLength)
+        {
+            return clean.Substring(0, maxLength) + "...";
+        }
+        
         return clean;
+    }
+    
+    private int GetPayloadSize(LiveEvent evt)
+    {
+        return evt.PayloadSnippet?.Length ?? 0;
     }
 
     private void OnEventClick(LiveEvent evt)
