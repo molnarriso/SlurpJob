@@ -33,13 +33,11 @@ window.slurpMap2D = {
 
         window.addEventListener('resize', () => this.resize());
 
-        // Load country data
-        console.log('2D Map: Starting to load country data...');
-        fetch('//unpkg.com/world-atlas/countries-110m.json')
+        // Load country data - using Natural Earth GeoJSON with reliable ISO codes
+        fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
             .then(res => res.json())
-            .then(data => {
-                this.countries = data.features;
-                console.log('2D Map: Loaded', this.countries.length, 'countries');
+            .then(geoData => {
+                this.countries = geoData.features;
                 // Start animation only after data is loaded
                 if (!this.animating) {
                     this.animating = true;
@@ -94,8 +92,18 @@ window.slurpMap2D = {
         // Draw countries if loaded
         if (this.countries && this.projection) {
             this.countries.forEach(feature => {
-                const iso3 = feature.properties.ISO_A3;
-                const iso2 = Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3);
+                // Handle different property naming conventions
+                const props = feature.properties || {};
+
+                // Try to get ISO2 code directly first (attack data uses ISO2)
+                let iso2 = props.ISO_A2 || props.iso_a2;
+
+                // If not found, try converting from ISO3
+                if (!iso2) {
+                    const iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3 || props.ADM0_A3;
+                    iso2 = iso3 ? Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3) : null;
+                }
+
                 const count = iso2 ? (this.countryData[iso2] || 0) : 0;
 
                 // Get color for country
