@@ -40,3 +40,11 @@ public class LiveEvent
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
 }
+
+public class TimelineBucket
+{
+    public DateTime Timestamp { get; set; }
+    public int TcpCount { get; set; }
+    public int UdpCount { get; set; }
+    public int TotalCount => TcpCount + UdpCount;
+}

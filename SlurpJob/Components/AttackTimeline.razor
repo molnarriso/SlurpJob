@@ -1,0 +1,81 @@
+@using SlurpJob.Services
+@using SlurpJob.Models
+@inject MemoryStore MemoryStore
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="card bg-dark text-light border-secondary">
+    <div class="card-body p-2">
+        <h6 class="card-title mb-2">Attack Timeline (24h)</h6>
+        <canvas id="@_canvasId" style="max-height: 150px;"></canvas>
+    </div>
+</div>
+
+@code {
+    private string _canvasId = $"timeline-{Guid.NewGuid():N}";
+    private System.Threading.Timer? _timer;
+    private DotNetObjectReference<AttackTimeline>? _objRef;
+
+    [JSInvokable]
+    public Task<object> GetChartData()
+    {
+        var timeline = MemoryStore.GetTimelineData(24);
+        
+        var data = new
+        {
+            labels = timeline.Select(b => b.Timestamp.ToString("HH:mm")).ToArray(),
+            datasets = new[]
+            {
+                new
+                {
+                    label = "TCP",
+                    data = timeline.Select(b => b.TcpCount).ToArray(),
+                    backgroundColor = "rgba(255, 99, 132, 0.5)",
+                    borderColor = "rgba(255, 99, 132, 1)",
+                    borderWidth = 1
+                },
+                new
+                {
+                    label = "UDP",
+                    data = timeline.Select(b => b.UdpCount).ToArray(),
+                    backgroundColor = "rgba(75, 192, 192, 0.5)",
+                    borderColor = "rgba(75, 192, 192, 1)",
+                    borderWidth = 1
+                }
+            }
+        };
+        
+        return Task.FromResult<object>(data);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("slurpTimeline.init", _canvasId, _objRef);
+            _timer = new System.Threading.Timer(UpdateChart, null, 10000, 10000);
+        }
+    }
+
+    private async void UpdateChart(object? state)
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                await JS.InvokeVoidAsync("slurpTimeline.update", _canvasId);
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Timeline Error: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _objRef?.Dispose();
+    }
+}

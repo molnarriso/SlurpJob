@@ -118,4 +118,55 @@ public class MemoryStore
     {
         return _dossiers.Values;
     }
+
+    public List<TimelineBucket> GetTimelineData(int hours = 24)
+    {
+        var events = _liveFeed.ToArray();
+        var cutoff = DateTime.UtcNow.AddHours(-hours);
+        
+        // Group events into hourly buckets
+        var buckets = events
+            .Where(e => e.Timestamp >= cutoff)
+            .GroupBy(e => new DateTime(e.Timestamp.Year, e.Timestamp.Month, e.Timestamp.Day, e.Timestamp.Hour, 0, 0))
+            .Select(g => new TimelineBucket
+            {
+                Timestamp = g.Key,
+                TcpCount = g.Count(e => e.Protocol == "TCP"),
+                UdpCount = g.Count(e => e.Protocol == "UDP")
+            })
+            .OrderBy(b => b.Timestamp)
+            .ToList();
+        
+        // Fill in missing hours with zero counts
+        var result = new List<TimelineBucket>();
+        var start = DateTime.UtcNow.AddHours(-hours);
+        start = new DateTime(start.Year, start.Month, start.Day, start.Hour, 0, 0);
+        
+        for (int i = 0; i <= hours; i++)
+        {
+            var timestamp = start.AddHours(i);
+            var bucket = buckets.FirstOrDefault(b => b.Timestamp == timestamp);
+            
+            if (bucket != null)
+            {
+                result.Add(bucket);
+            }
+            else
+            {
+                result.Add(new TimelineBucket { Timestamp = timestamp, TcpCount = 0, UdpCount = 0 });
+            }
+        }
+        
+        return result;
+    }
+
+    public Dictionary<string, int> GetCountryAttackCounts()
+    {
+        // Get recent events (last 1000 or all if fewer)
+        var events = _liveFeed.ToArray().Take(1000);
+        
+        return events
+            .GroupBy(e => e.SourceCountry)
+            .ToDictionary(g => g.Key, g => g.Count());
+    }
 }
