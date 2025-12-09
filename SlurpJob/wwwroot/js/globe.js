@@ -25,16 +25,32 @@ window.slurpGlobe = {
             return;
         }
 
+        // Get container dimensions
+        const width = element.clientWidth;
+        const height = element.clientHeight;
+
         this.instance = Globe()
             .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
             .backgroundColor('#000000')
             .showAtmosphere(true)
             .atmosphereColor('#00ffff')
             .atmosphereAltitude(0.15)
+            .width(width)
+            .height(height)
             (element);
 
         this.instance.controls().autoRotate = true;
         this.instance.controls().autoRotateSpeed = 0.6;
+
+        // Handle window resize to keep globe centered
+        this.resizeHandler = () => {
+            if (this.instance && element.clientWidth && element.clientHeight) {
+                this.instance
+                    .width(element.clientWidth)
+                    .height(element.clientHeight);
+            }
+        };
+        window.addEventListener('resize', this.resizeHandler);
 
         // Load country polygons
         fetch('//unpkg.com/world-atlas/countries-110m.json')
@@ -77,6 +93,13 @@ window.slurpGlobe = {
             // Globe.gl doesn't have a built-in dispose, but we can clear the data
             this.instance.polygonsData([]);
         }
+
+        // Remove resize listener
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+            this.resizeHandler = null;
+        }
+
         this.instance = null;
     }
 };
