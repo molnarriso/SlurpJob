@@ -99,7 +99,7 @@
     
     private int GetPayloadSize(LiveEvent evt)
     {
-        return evt.PayloadSnippet?.Length ?? 0;
+        return evt.PayloadSize; // Return actual payload size, not snippet length
     }
 
     private void OnEventClick(LiveEvent evt)

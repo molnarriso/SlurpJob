@@ -36,6 +36,7 @@ public class LiveEvent
     public int TargetPort { get; set; }
     public string Protocol { get; set; } = string.Empty;
     public byte[] PayloadSnippet { get; set; } = Array.Empty<byte>();
+    public int PayloadSize { get; set; } // Actual full payload size
     public string PayloadHash { get; set; } = string.Empty;
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }

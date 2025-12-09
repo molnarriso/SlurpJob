@@ -59,6 +59,7 @@ public class HistoryLoader : IHostedService
                             TargetPort = log.TargetPort == 0 ? 80 : log.TargetPort, // Default to 80 if lost
                             Protocol = "HIST", // Mark as history
                             PayloadSnippet = sig.PayloadRaw.Take(50).ToArray(),
+                            PayloadSize = sig.PayloadRaw.Length, // Store actual size
                             PayloadHash = sig.Hash,
                             Latitude = null, // Could look up from Country but skipping for speed
                             Longitude = null

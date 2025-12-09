@@ -148,6 +148,7 @@ public class IngestionService : BackgroundService
             TargetPort = targetPort,
             Protocol = protocol,
             PayloadSnippet = payload.Take(50).ToArray(),
+            PayloadSize = payload.Length, // Store actual full size
             PayloadHash = hashInput,
             Latitude = lat,
             Longitude = lon
