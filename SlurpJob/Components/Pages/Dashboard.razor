@@ -147,7 +147,7 @@
 @code {
     private PayloadInspector _inspector = default!;
     private System.Threading.Timer? _vizTimer;
-    private bool _isGlobeMode = true;
+    private bool _isGlobeMode = false; // Default to 2D map
     private bool _initialized = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
