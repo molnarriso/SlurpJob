@@ -76,12 +76,8 @@ public class TcpSponge
                 {
                     bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cts.Token);
                 }
-                catch (OperationCanceledException) 
-                {
-                    // Timeout or cancelled
-                }
-
-                // Console.WriteLine($"TcpSponge: {remoteEp} -> {originalEp} ({bytesRead} bytes)");
+                catch (OperationCanceledException) { }
+                catch (IOException) { }
 
                 var payload = new byte[bytesRead];
                 Array.Copy(buffer, payload, bytesRead);
@@ -95,67 +91,13 @@ public class TcpSponge
                     Timestamp = DateTime.UtcNow
                 };
 
-                // Notify Ingestion (Log everything)
                 OnConnectionReceived?.Invoke(data);
-
-                // PROXY LOGIC
-                if (originalEp.Port == 80 && bytesRead > 0)
-                {
-                    // Console.WriteLine($"TcpSponge: Proxying {remoteEp} to Backend");
-                    await ProxyToBackend(client, payload, token);
-                }
-                else if (originalEp.Port == 80)
-                {
-                    Console.WriteLine($"TcpSponge: Dropped Port 80 connection from {remoteEp} (0 bytes read)");
-                }
             }
             catch (Exception ex)
             {
                  Console.WriteLine($"TcpSponge Error: {ex.Message}");
             }
         }
-    }
-
-    private async Task ProxyToBackend(TcpClient client, byte[] initialPayload, CancellationToken token)
-    {
-        try
-        {
-            client.NoDelay = true; // Disable Nagle
-
-            using var backend = new TcpClient();
-            backend.NoDelay = true; // Disable Nagle
-
-            // Connect to local Kestrel
-            await backend.ConnectAsync("127.0.0.1", 5000, token);
-            
-            var backendStream = backend.GetStream();
-            var clientStream = client.GetStream();
-
-            // Forward initial payload
-            await backendStream.WriteAsync(initialPayload, token);
-
-            // Bi-directional copy
-            using var tunnelCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-            
-            var clientToBackend = CopyStream(clientStream, backendStream, tunnelCts.Token);
-            var backendToClient = CopyStream(backendStream, clientStream, tunnelCts.Token);
-
-            await Task.WhenAny(clientToBackend, backendToClient);
-            tunnelCts.Cancel(); // Cancel the other direction
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Proxy Error: {ex.Message}");
-        }
-    }
-
-    private async Task CopyStream(NetworkStream source, NetworkStream destination, CancellationToken token)
-    {
-        try
-        {
-            await source.CopyToAsync(destination, token);
-        }
-        catch { }
     }
 }
 
