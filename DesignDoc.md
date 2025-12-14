@@ -1,4 +1,4 @@
-# Architecture Specification: SlurpJob.com (Part 1/3)
+# Architecture Specification: SlurpJob.com
 **Target System:** .NET 9 Monolith on Linux (AWS t3.small)
 **Deployment:** Systemd Service (No Docker)
 
@@ -141,7 +141,7 @@ The frontend is built directly into the monolithic application using **ASP.NET C
 **Theme:** "Dark Mode / Cyberpunk." High contrast, monospace fonts (e.g., 'JetBrains Mono' or 'Fira Code').
 
 1.  **The "Live Feed" (Left Column - 25% Width)**
-    *   **Source:** Polls the in-memory `Matrix Buffer` (defined in Part 2) every 1 second.
+    *   **Source:** Polls the in-memory `Matrix Buffer` every 1 second.
     *   **Visualization:** A vertical list of the last 50 events. New items fade in at the top; old items slide out.
     *   **Content:** `[HH:mm:ss] [CN] -> [Port 445] : <Payload Snippet>`
     *   **Interaction:** Clicking a row opens the **Payload Inspector Modal**.
