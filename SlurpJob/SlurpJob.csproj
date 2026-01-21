@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     
     <!-- Binary Size Optimizations -->
-    <PublishTrimmed>true</PublishTrimmed>
+    <PublishTrimmed>false</PublishTrimmed>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <TrimMode>partial</TrimMode>
     <InvariantGlobalization>false</InvariantGlobalization>
@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <PackageReference Include="MaxMind.GeoIP2" Version="5.4.1" />
+
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

@@ -1,11 +1,13 @@
-@using SlurpJob.Services
 @using SlurpJob.Models
-@inject MemoryStore MemoryStore
+@using SlurpJob.Services
+@inject IngestionService Ingestion
+@inject ILogger<LiveFeed> Logger
 @implements IDisposable
 
 <div class="card bg-dark text-light h-100">
     <div class="card-header">
         <h5 class="card-title mb-0">Live Feed</h5>
+        <span class="badge bg-success float-end">Live</span>
     </div>
     <div class="card-body p-0 overflow-auto" style="height: 600px;">
         <div class="list-group list-group-flush">
@@ -13,22 +15,20 @@
             {
                 <button type="button" class="list-group-item list-group-item-action bg-dark text-light border-secondary" @onclick="() => OnEventClick(evt)">
                     <div class="d-flex w-100 justify-content-between align-items-start mb-1">
-                        <small class="text-secondary">@evt.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</small>
+                        <small class="text-secondary">@evt.Timestamp.ToString("HH:mm:ss")</small>
                         <small class="text-info">@evt.Protocol</small>
                     </div>
                     <div class="mb-1 text-truncate">
-                        <span class="fw-bold text-warning">[@evt.SourceCountry]</span>
+                        <span class="fw-bold text-warning">[@evt.CountryCode]</span>
                         <span class="mx-1">&rarr;</span>
                         <span class="text-danger">Port @evt.TargetPort</span>
                     </div>
                     <div class="mb-1">
-                        <small class="text-secondary font-monospace d-block text-truncate">
-                            @GetPayloadSnippet(evt, 60)
+                        <small class="text-white-50">
+                            @evt.ClassifierName
                         </small>
+                         <span class="badge @GetTagColor(evt.PrimaryTag)">@evt.PrimaryTag</span>
                     </div>
-                    <small class="text-secondary">
-                        Size: <span class="text-info">@GetPayloadSize(evt) bytes</span>
-                    </small>
                 </button>
             }
         </div>
@@ -36,79 +36,88 @@
 </div>
 
 @code {
-    private List<LiveEvent> _events = new();
-    private System.Threading.Timer? _timer;
+    // ViewModel to avoid circular references and serialization scope issues
+    public class LiveEventViewModel
+    {
+        public DateTime Timestamp { get; set; }
+        public string Protocol { get; set; } = "";
+        public string CountryCode { get; set; } = "";
+        public int TargetPort { get; set; }
+        public string ClassifierName { get; set; } = "";
+        public IncidentTag PrimaryTag { get; set; }
+        public byte[] PayloadBlob { get; set; } = Array.Empty<byte>();
+        
+        // Keep original ref if needed, but risky for serialization
+        // public IncidentLog Original { get; set; } 
+    }
 
-    [Parameter] public EventCallback<LiveEvent> OnEventSelected { get; set; }
+    private List<LiveEventViewModel> _events = new();
+    
+    // We change the callback to return the ViewModel or reconstruct it from VM
+    [Parameter] public EventCallback<IncidentLog> OnEventSelected { get; set; }
 
     protected override void OnInitialized()
     {
-        Console.WriteLine("LiveFeed: OnInitialized");
+        Logger.LogInformation("LiveFeed: Initializing...");
+        Ingestion.OnNewIncident += HandleIncident;
     }
-
-    protected override void OnAfterRender(bool firstRender)
+    
+    private async void HandleIncident(IncidentLog incident)
     {
-        if (firstRender)
+        try 
         {
-            Console.WriteLine("LiveFeed: OnAfterRender (First) - Starting Timer");
-            // Start timer only after first render to ensure circuit is ready
-            _timer = new System.Threading.Timer(RefreshFeed, null, 0, 1000);
-        }
-    }
-
-    private async void RefreshFeed(object? state)
-    {
-        try
-        {
-            // Console.WriteLine("LiveFeed: Timer Tick"); // Commented out to avoid spam, but useful if needed
-            var events = MemoryStore.GetLiveFeed().ToList();
-            
-            // Update state on the UI thread to avoid race conditions
-            await InvokeAsync(() => 
+            // Map to safe ViewModel IMMEDIATELY
+            var safeVm = new LiveEventViewModel
             {
-                if (events.Count != _events.Count)
-                {
-                    Console.WriteLine($"LiveFeed: Updating UI with {events.Count} events (was {_events.Count})");
-                    _events = events;
-                    StateHasChanged();
-                }
+                Timestamp = incident.Timestamp,
+                Protocol = incident.Protocol,
+                CountryCode = incident.CountryCode,
+                TargetPort = incident.TargetPort,
+                ClassifierName = incident.ClassifierName,
+                PrimaryTag = incident.PrimaryTag,
+                PayloadBlob = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>()
+            };
+
+            await InvokeAsync(() =>
+            {
+                _events.Insert(0, safeVm);
+                if (_events.Count > 100) _events.RemoveAt(_events.Count - 1);
+                StateHasChanged();
             });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"LiveFeed Error: {ex.Message}");
+            Logger.LogError(ex, "LiveFeed: Error handling incident");
         }
     }
 
-    private string GetPayloadSnippet(LiveEvent evt, int maxLength = 40)
+    private void OnEventClick(LiveEventViewModel vm)
     {
-        if (evt.PayloadSnippet == null || evt.PayloadSnippet.Length == 0) return "<empty>";
-        
-        // Convert snippet to safe string
-        var text = System.Text.Encoding.ASCII.GetString(evt.PayloadSnippet);
-        var clean = new string(text.Select(c => char.IsControl(c) ? '.' : c).ToArray());
-        
-        // Truncate to maxLength if needed
-        if (clean.Length > maxLength)
+        // Reconstruct a dummy IncidentLog to satisfy the callback signature
+        // Or better, update callback to use VM, but for now allow compatible interface
+        var dummy = new IncidentLog
         {
-            return clean.Substring(0, maxLength) + "...";
-        }
+            Timestamp = vm.Timestamp,
+            Protocol = vm.Protocol,
+            CountryCode = vm.CountryCode,
+            TargetPort = vm.TargetPort,
+            ClassifierName = vm.ClassifierName,
+            PrimaryTag = vm.PrimaryTag,
+            Evidence = new EvidenceLocker { PayloadBlob = vm.PayloadBlob }
+        };
         
-        return clean;
+        OnEventSelected.InvokeAsync(dummy);
     }
     
-    private int GetPayloadSize(LiveEvent evt)
-    {
-        return evt.PayloadSize; // Return actual payload size, not snippet length
-    }
-
-    private void OnEventClick(LiveEvent evt)
-    {
-        OnEventSelected.InvokeAsync(evt);
-    }
+    private string GetTagColor(IncidentTag tag) => tag switch {
+        IncidentTag.Exploit => "bg-danger",
+        IncidentTag.Recon => "bg-warning text-dark",
+        IncidentTag.Garbage => "bg-secondary",
+        _ => "bg-info text-dark"
+    };
 
     public void Dispose()
     {
-        _timer?.Dispose();
+        Ingestion.OnNewIncident -= HandleIncident;
     }
 }

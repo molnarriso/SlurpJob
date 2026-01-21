@@ -7,24 +7,50 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+    
+builder.Services.AddServerSideBlazor()
+    .AddCircuitOptions(options => { options.DetailedErrors = true; })
+    .AddHubOptions(options => {
+        options.EnableDetailedErrors = true;
+        // Disable compression to avoid proxy issues
+        // options.HandshakeTimeout = TimeSpan.FromSeconds(30); 
+    });
+
+builder.Services.AddSignalR(); // NEW: SignalR
+
+// Proxy Support
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | 
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+});
 
 // SlurpJob Services
-builder.Services.AddSingleton<SlurpJob.Services.MemoryStore>();
 builder.Services.AddSingleton<SlurpJob.Services.IngestionService>();
 builder.Services.AddHostedService(p => p.GetRequiredService<SlurpJob.Services.IngestionService>());
-builder.Services.AddHostedService<SlurpJob.Services.PersistenceWorker>();
-builder.Services.AddHostedService<SlurpJob.Services.HistoryLoader>();
-builder.Services.AddHostedService<SlurpJob.Services.PanicService>();
+
+// Classifiers
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.BasicClassifier>();
 
 builder.Services.AddDbContext<SlurpJob.Data.SlurpContext>(options =>
     options.UseSqlite("Data Source=slurp.db"));
 
 var app = builder.Build();
 
+// Ensure DB Created
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<SlurpJob.Data.SlurpContext>();
+    db.Database.EnsureCreated();
+}
+
+
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseForwardedHeaders(); // PROXY SUPPORT
     app.UseHsts();
 }
 
@@ -33,5 +59,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+    
+app.MapHub<SlurpJob.Hubs.DashboardHub>("/dashboardHub"); // NEW: Map Hub
 
 app.Run("http://localhost:5000");

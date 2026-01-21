@@ -63,13 +63,13 @@ public class TcpSponge
 
                 if (remoteEp == null || originalEp == null) return;
 
-                // Read up to 32KB (Peek)
+                // Read up to 16KB (Spec Limit)
                 var stream = client.GetStream();
-                var buffer = new byte[32 * 1024];
+                var buffer = new byte[16 * 1024];
                 
-                // 5s timeout to receive initial data (was 2s)
+                // 15s timeout to receive initial data (Spec)
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                cts.CancelAfter(TimeSpan.FromSeconds(5)); 
+                cts.CancelAfter(TimeSpan.FromSeconds(15)); 
 
                 int bytesRead = 0;
                 try 

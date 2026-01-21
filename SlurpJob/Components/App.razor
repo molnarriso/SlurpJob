@@ -8,17 +8,18 @@
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["SlurpJob.styles.css"]" />
-    <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+    <HeadOutlet />
 </head>
 
 <body>
+    <div id="app-loading" style="color: white; font-family: sans-serif; padding: 20px;">
+        <h1>SlurpJob Loading...</h1>
+        <small>If this persists, SignalR connection might be blocked.</small>
+    </div>
     <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
     <script src="_framework/blazor.web.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="//unpkg.com/globe.gl"></script>
-    <script src="js/globe.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/map2d.js"></script>
     <script src="js/timeline.js"></script>
 </body>

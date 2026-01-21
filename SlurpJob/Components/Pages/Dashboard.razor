@@ -1,251 +1,86 @@
 @page "/"
 @using SlurpJob.Components
-@using SlurpJob.Models
 @using SlurpJob.Services
+@using SlurpJob.Data
+@using SlurpJob.Models
+@inject SlurpJob.Services.IngestionService Ingestion
 @inject IJSRuntime JS
-@inject MemoryStore MemoryStore
 @implements IDisposable
 
-<PageTitle>SlurpJob Dashboard</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
-<style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    html, body {
-        overflow: hidden !important;
-        height: 100vh;
-        width: 100vw;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    .dashboard-container {
-        display: flex;
-        width: 100vw;
-        height: 100vh;
-        margin: 0;
-        padding: 0;
-    }
-    
-    .left-panel {
-        width: 60%;
-        height: 100vh;
-        background: #212529;
-        border-right: 1px solid #343a40;
-    }
-    
-    .right-panel {
-        width: 40%;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .globe-panel {
-        flex: 1;
-        background: #000;
-        position: relative;
-        min-height: 0;
-    }
-    
-    .timeline-panel {
-        height: 220px;
-        background: #1a1d20;
-        border-top: 1px solid #343a40;
-        padding: 8px;
-    }
-    
-    .mode-btn {
-        background: rgba(13, 110, 253, 0.1);
-        border: 1px solid rgba(13, 110, 253, 0.3);
-        color: #6c757d;
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-        padding: 0.375rem 0.75rem;
-    }
-    
-    .mode-btn:hover {
-        background: rgba(13, 110, 253, 0.2);
-        border-color: rgba(13, 110, 253, 0.5);
-        color: #adb5bd;
-    }
-    
-    .mode-btn.active {
-        background: rgba(13, 110, 253, 0.4);
-        border-color: #0dcaf0;
-        color: #0dcaf0;
-        font-weight: 600;
-    }
-    
-    .mode-btn.active:hover {
-        background: rgba(13, 110, 253, 0.5);
-        color: #fff;
-    }
-</style>
+@* 2D Map Canvas *@
+<canvas id="mapViz"></canvas>
 
-<div class="dashboard-container">
-    <!-- LEFT: Live Feed (60%) -->
-    <div class="left-panel">
-        <LiveFeed OnEventSelected="ShowPayload" />
-    </div>
-
-    <!-- RIGHT: Globe + Timeline (40%) -->
-    <div class="right-panel">
-        <!-- TOP: Globe/Map Visualization -->
-        <div class="globe-panel">
-            @if (_isGlobeMode)
-            {
-                <div id="globeViz" style="width: 100%; height: 100%;"></div>
-            }
-            else
-            {
-                <canvas id="map2dCanvas" style="width: 100%; height: 100%;"></canvas>
-            }
-            
-            <!-- Header Overlay -->
-            <div class="position-absolute top-0 start-0 p-3 pointer-events-none">
-                <h1 class="display-6 text-light" style="text-shadow: 0 0 10px #0ff; font-family: 'Courier New', monospace;">SLURPJOB</h1>
-                <div class="text-secondary small">Network Telescope Active</div>
+<div class="dashboard-overlay">
+    <div class="header">
+        <div class="brand">SLURPJOB</div>
+        <div class="stats">
+            <div class="stat-item">
+                <span class="label">EVENTS</span>
+                <span class="value">@Ingestion.TotalEvents.ToString("N0")</span>
             </div>
-            
-            <!-- Mode Toggle (Centered) -->
-            <div class="position-absolute top-0 start-50 translate-middle-x p-3">
-                <div class="btn-group" role="group" style="pointer-events: auto;">
-                    <button class="btn btn-sm mode-btn @(_isGlobeMode ? "active" : "")" @onclick="() => SetMode(true)">
-                        🌍 Globe
-                    </button>
-                    <button class="btn btn-sm mode-btn @(!_isGlobeMode ? "active" : "")" @onclick="() => SetMode(false)">
-                        🗺️ 2D Map
-                    </button>
-                </div>
+            <div class="stat-item">
+                <span class="label">THREATS</span>
+                <span class="value" style="color: #ff4444">@Ingestion.ThreatsDetected.ToString("N0")</span>
             </div>
-            
-            <!-- Stats Overlay (Top Right) -->
-            <div class="position-absolute top-0 end-0 p-3 pointer-events-none">
-                <div class="text-info small mb-1">
-                    <strong>Dossiers:</strong> @MemoryStore.GetDossiers().Count()
-                </div>
-                <div class="text-warning small">
-                    <strong>Events:</strong> @MemoryStore.GetLiveFeed().Count()
-                </div>
+             <div class="stat-item">
+                <span class="label">CPS</span>
+                <span class="value">@((int)Ingestion.EventsPerSecond)</span>
             </div>
         </div>
+    </div>
 
-        <!-- BOTTOM: Timeline -->
-        <div class="timeline-panel">
-            <AttackTimeline />
+    <div class="left-panel">
+         <LiveFeed OnEventSelected="ShowPayload" />
+    </div>
+
+    <div class="bottom-panel">
+        <div class="timeline-container">
+            <canvas id="timelineChart"></canvas>
         </div>
     </div>
 </div>
 
-<PayloadInspector @ref="_inspector" />
+<PayloadInspector @ref="_payloadInspector" />
 
 @code {
-    private PayloadInspector _inspector = default!;
-    private System.Threading.Timer? _vizTimer;
-    private bool _isGlobeMode = false; // Default to 2D map
-    private bool _initialized = false;
+    private PayloadInspector _payloadInspector = default!;
+    private System.Threading.Timer? _refreshTimer;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await InitializeVisualization();
-            _vizTimer = new System.Threading.Timer(UpdateVisualization, null, 2000, 3000);
-            _initialized = true;
-        }
-    }
-
-    private async Task InitializeVisualization()
-    {
-        if (_isGlobeMode)
-        {
-            await JS.InvokeVoidAsync("slurpGlobe.init", "globeViz");
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("slurpMap2D.init", "map2dCanvas");
-        }
-    }
-
-    private async void UpdateVisualization(object? state)
-    {
-        if (!_initialized) return;
-        
-        try
-        {
-            var countryData = MemoryStore.GetCountryAttackCounts();
-            
-            await InvokeAsync(async () =>
-            {
-                if (_isGlobeMode)
-                {
-                    await JS.InvokeVoidAsync("slurpGlobe.updateHeatmap", countryData);
-                }
-                else
-                {
-                    await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", countryData);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Visualization Error: {ex.Message}");
-        }
-    }
-
-    private async Task SetMode(bool isGlobeMode)
-    {
-        if (_isGlobeMode == isGlobeMode) return;
-        
-        _isGlobeMode = isGlobeMode;
-        
-        if (_isGlobeMode)
-        {
-            await JS.InvokeVoidAsync("slurpMap2D.dispose");
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("slurpGlobe.dispose");
-        }
-        
-        StateHasChanged();
-        await Task.Delay(100);
-        await InitializeVisualization();
-        
-        var countryData = MemoryStore.GetCountryAttackCounts();
-        if (_isGlobeMode)
-        {
-            await JS.InvokeVoidAsync("slurpGlobe.updateHeatmap", countryData);
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", countryData);
-        }
-    }
-
-    private void ShowPayload(LiveEvent evt)
-    {
-        byte[] payload = evt.PayloadSnippet;
-        
-        if (!string.IsNullOrEmpty(evt.PayloadHash))
-        {
-            var dossier = MemoryStore.GetDossiers().FirstOrDefault(d => d.PayloadHash == evt.PayloadHash);
-            if (dossier != null)
-            {
-                payload = dossier.PayloadData;
+            try {
+                // Initialize Globe and Timeline
+                // Use catch to ensure one failure doesn't stop the other
+                try { await JS.InvokeVoidAsync("slurpMap2D.init", "mapViz"); } catch(Exception ex) { Console.WriteLine("Map2D Init: " + ex.Message); }
+                try { await JS.InvokeVoidAsync("initTimeline", "timelineChart", DotNetObjectReference.Create(this)); } catch(Exception ex) { Console.WriteLine("Timeline Init: " + ex.Message); }
+            } catch (Exception ex) {
+                Console.WriteLine("JS Init Failed: " + ex.Message);
             }
+            
+            // Start Refresh Timer for stats
+            _refreshTimer = new System.Threading.Timer(_ =>InvokeAsync(StateHasChanged), null, 1000, 1000);
         }
+    }
 
-        _inspector.Open(payload);
+    private void ShowPayload(IncidentLog incident)
+    {
+        if (incident == null) return;
+        var payload = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
+        _payloadInspector.Open(payload);
+    }
+
+    [JSInvokable]
+    public async Task<object> GetChartData()
+    {
+        return new { };
     }
 
     public void Dispose()
     {
-        _vizTimer?.Dispose();
+        _refreshTimer?.Dispose();
     }
 }

@@ -16,6 +16,9 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "2. Stopping Service..." -ForegroundColor Cyan
 plink -batch -i $Key -ssh $User@$ServerIp "sudo systemctl stop slurpjob"
 
+Write-Host "2b. Nuke Old Database..." -ForegroundColor Red
+plink -batch -i $Key -ssh $User@$ServerIp "sudo rm -f $RemotePath/slurp.db"
+
 Write-Host "3. Uploading Files..." -ForegroundColor Cyan
 pscp -batch -i $Key -r publish_arm64/* $User@$ServerIp`:$RemotePath
 
