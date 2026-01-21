@@ -4,12 +4,12 @@
 @inject ILogger<LiveFeed> Logger
 @implements IDisposable
 
-<div class="card bg-dark text-light h-100">
-    <div class="card-header">
+<div class="card bg-dark text-light h-100 d-flex flex-column">
+    <div class="card-header flex-shrink-0">
         <h5 class="card-title mb-0">Live Feed</h5>
         <span class="badge bg-success float-end">Live</span>
     </div>
-    <div class="card-body p-0 overflow-auto" style="height: 600px;">
+    <div class="card-body p-0 overflow-auto flex-grow-1">
         <div class="list-group list-group-flush">
             @foreach (var evt in _events)
             {
