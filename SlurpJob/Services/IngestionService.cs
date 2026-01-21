@@ -8,6 +8,7 @@ using SlurpJob.Classification;
 using SlurpJob.Data;
 using SlurpJob.Hubs;
 using MaxMind.GeoIP2;
+using Microsoft.EntityFrameworkCore;
 
 namespace SlurpJob.Services;
 
@@ -146,10 +147,11 @@ public class IngestionService : BackgroundService
             }
         };
 
-        // 4. Persist (Scoped DB Context)
+        // 4. Persist (Using DB Factory)
         using (var scope = _scopeFactory.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<SlurpContext>();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SlurpContext>>();
+            using var db = factory.CreateDbContext();
             db.IncidentLogs.Add(incident); // Cascades to Evidence
             await db.SaveChangesAsync();
         }

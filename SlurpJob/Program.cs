@@ -32,7 +32,7 @@ builder.Services.AddHostedService(p => p.GetRequiredService<SlurpJob.Services.In
 // Classifiers
 builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.BasicClassifier>();
 
-builder.Services.AddDbContext<SlurpJob.Data.SlurpContext>(options =>
+builder.Services.AddDbContextFactory<SlurpJob.Data.SlurpContext>(options =>
     options.UseSqlite("Data Source=slurp.db"));
 
 var app = builder.Build();
@@ -40,7 +40,8 @@ var app = builder.Build();
 // Ensure DB Created
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<SlurpJob.Data.SlurpContext>();
+    var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SlurpJob.Data.SlurpContext>>();
+    using var db = factory.CreateDbContext();
     db.Database.EnsureCreated();
 }
 

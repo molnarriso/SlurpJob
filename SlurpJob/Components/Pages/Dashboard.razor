@@ -3,8 +3,10 @@
 @using SlurpJob.Services
 @using SlurpJob.Data
 @using SlurpJob.Models
+@using Microsoft.EntityFrameworkCore
 @inject SlurpJob.Services.IngestionService Ingestion
 @inject IJSRuntime JS
+@inject IDbContextFactory<SlurpContext> DbFactory
 @implements IDisposable
 
 <PageTitle>Dashboard</PageTitle>
@@ -33,6 +35,12 @@
              <canvas id="mapViz"></canvas>
         </div>
         <div class="timeline-wrapper">
+             <div class="timeline-controls">
+                <button class="@(_currentTimeRange == "1H" ? "active" : "")" @onclick='() => SetTimeRange("1H")'>1H</button>
+                <button class="@(_currentTimeRange == "1D" ? "active" : "")" @onclick='() => SetTimeRange("1D")'>1D</button>
+                <button class="@(_currentTimeRange == "1W" ? "active" : "")" @onclick='() => SetTimeRange("1W")'>1W</button>
+                <button class="@(_currentTimeRange == "1M" ? "active" : "")" @onclick='() => SetTimeRange("1M")'>1M</button>
+             </div>
              <canvas id="timelineChart"></canvas>
         </div>
     </div>
@@ -48,6 +56,7 @@
     private PayloadInspector _payloadInspector = default!;
     private System.Threading.Timer? _refreshTimer;
     private Dictionary<string, int> _countryCounts = new();
+    private string _currentTimeRange = "1H";
 
     protected override void OnInitialized()
     {
@@ -67,8 +76,14 @@
                 Console.WriteLine("JS Init Failed: " + ex.Message);
             }
             
-            // Start Refresh Timer for stats
-            _refreshTimer = new System.Threading.Timer(_ =>InvokeAsync(StateHasChanged), null, 1000, 1000);
+            // Start Refresh Timer for stats and timeline
+            _refreshTimer = new System.Threading.Timer(async _ => 
+            {
+                await InvokeAsync(StateHasChanged);
+                try {
+                    await JS.InvokeVoidAsync("slurpTimeline.update", "timelineChart");
+                } catch { }
+            }, null, 1000, 5000); // Update timeline every 5s
         }
     }
 
@@ -115,11 +130,94 @@
         _payloadInspector.Open(payload);
     }
 
+    private async Task SetTimeRange(string range)
+    {
+        _currentTimeRange = range;
+        await JS.InvokeVoidAsync("slurpTimeline.update", "timelineChart");
+        StateHasChanged();
+    }
+
     [JSInvokable]
     public async Task<object> GetChartData()
     {
-        return new { };
+        var now = DateTime.UtcNow;
+        var start = _currentTimeRange switch
+        {
+            "1H" => now.AddHours(-1),
+            "1D" => now.AddDays(-1),
+            "1W" => now.AddDays(-7),
+            "1M" => now.AddDays(-30),
+            _ => now.AddHours(-1)
+        };
+
+        using var db = DbFactory.CreateDbContext();
+        var incidents = await db.IncidentLogs
+            .Where(i => i.Timestamp >= start)
+            .OrderBy(i => i.Timestamp)
+            .Select(i => new { i.Timestamp, i.PrimaryTag })
+            .ToListAsync();
+
+        // Calculate bucket duration
+        TimeSpan bucketDuration = _currentTimeRange switch
+        {
+            "1H" => TimeSpan.FromMinutes(1),
+            "1D" => TimeSpan.FromMinutes(30),
+            "1W" => TimeSpan.FromHours(6),
+            "1M" => TimeSpan.FromDays(1),
+            _ => TimeSpan.FromMinutes(1)
+        };
+
+        // Create buckets
+        var buckets = new List<DateTime>();
+        // Round start down to nearest bucket
+        var bucketStart = new DateTime(start.Ticks - (start.Ticks % bucketDuration.Ticks), start.Kind);
+        for (var t = bucketStart; t <= now; t = t.Add(bucketDuration))
+        {
+            buckets.Add(t);
+        }
+
+        var labels = buckets.Select(b => _currentTimeRange switch {
+            "1H" => b.ToLocalTime().ToString("HH:mm"),
+            "1D" => b.ToLocalTime().ToString("HH:mm"),
+            "1W" => b.ToLocalTime().ToString("MM/dd HH:mm"),
+            "1M" => b.ToLocalTime().ToString("MM/dd"),
+            _ => b.ToLocalTime().ToString("HH:mm")
+        }).ToList();
+
+        var tags = Enum.GetValues<IncidentTag>();
+        var datasets = new List<object>();
+
+        foreach (var tag in tags)
+        {
+            var data = new List<int>();
+            foreach (var bStart in buckets)
+            {
+                var bEnd = bStart.Add(bucketDuration);
+                var count = incidents.Count(i => i.PrimaryTag == tag && i.Timestamp >= bStart && i.Timestamp < bEnd);
+                data.Add(count);
+            }
+
+            datasets.Add(new
+            {
+                label = tag.ToString(),
+                data = data,
+                backgroundColor = GetTagColor(tag),
+                borderColor = GetTagColor(tag),
+                borderWidth = 1
+            });
+        }
+
+        return new { labels, datasets };
     }
+
+    private string GetTagColor(IncidentTag tag) => tag switch
+    {
+        IncidentTag.Exploit => "#ff4444",
+        IncidentTag.Recon => "#33b5e5",
+        IncidentTag.Garbage => "#ffbb33",
+        IncidentTag.Misc => "#aa66cc",
+        _ => "#adb5bd"
+    };
 
     public void Dispose()
     {
