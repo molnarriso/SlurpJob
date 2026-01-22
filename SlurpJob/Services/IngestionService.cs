@@ -59,7 +59,79 @@ public class IngestionService : BackgroundService
         _tcpSponge.OnConnectionReceived += async (data) => await HandleConnection(data.SourceIp, data.SourcePort, data.OriginalTargetPort, "TCP", data.Payload, data.Timestamp);
         _udpSponge.OnPacketReceived += async (data) => await HandleConnection(data.SourceIp, data.SourcePort, data.OriginalTargetPort, "UDP", data.Payload, data.Timestamp);
         
+        // Run reclassification in background after start
+        _ = Task.Run(() => ReclassifyUnclassifiedAsync(cancellationToken), cancellationToken);
+
         return base.StartAsync(cancellationToken);
+    }
+
+    private async Task ReclassifyUnclassifiedAsync(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Starting background reclassification of 'Unclassified' entries...");
+
+            using var scope = _scopeFactory.CreateScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SlurpContext>>();
+            using var db = factory.CreateDbContext();
+
+            var unclassified = await db.IncidentLogs
+                .Include(i => i.Evidence)
+                .Where(i => i.ClassifierName == "Unclassified")
+                .ToListAsync(ct);
+
+            if (unclassified.Count == 0)
+            {
+                _logger.LogInformation("No 'Unclassified' entries found for reclassification.");
+                return;
+            }
+
+            _logger.LogInformation($"Found {unclassified.Count} 'Unclassified' entries. Re-running classifiers...");
+
+            int updatedCount = 0;
+            foreach (var incident in unclassified)
+            {
+                if (ct.IsCancellationRequested) break;
+                if (incident.Evidence == null) continue;
+
+                var payload = incident.Evidence.PayloadBlob;
+                var results = _classifiers.Select(c => c.Classify(payload, incident.Protocol, incident.TargetPort)).ToList();
+
+                var bestProtocol = results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Protocol ?? PayloadProtocol.Unknown;
+                var bestIntent = results.Where(r => r.Intent != Intent.Unknown)
+                                        .OrderByDescending(r => (int)r.Intent)
+                                        .FirstOrDefault()?.Intent ?? Intent.Unknown;
+                var bestName = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Name 
+                               ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Name
+                               ?? "Unclassified";
+
+                if (bestName != "Unclassified")
+                {
+                    incident.PayloadProtocol = bestProtocol.ToString();
+                    incident.Intent = bestIntent.ToString();
+                    incident.ClassifierName = bestName;
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0)
+            {
+                await db.SaveChangesAsync(ct);
+                _logger.LogInformation($"Successfully reclassified {updatedCount} incidents.");
+            }
+            else
+            {
+                _logger.LogInformation("Finished reclassification. No items were updated.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Reclassification task cancelled.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during background reclassification");
+        }
     }
 
     private void InitializeGeoIp()

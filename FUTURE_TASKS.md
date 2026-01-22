@@ -5,3 +5,4 @@
 - reclasify payloads after each app start 
 - Fix warnings
 - Better 2d map (antarctica is too large, europe too small)
+- Better deploy (dont reupload files not changed)

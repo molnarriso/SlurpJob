@@ -21,7 +21,7 @@ Contains data models, DTOs, and enums used throughout the application.
 Contains the core low-level networking logic (Socket listener, Ingestion).
 
 ## Services
-Contains application services (Hosted services, business logic).
+Contains application services (Hosted services, business logic). This includes the `IngestionService` which handles real-time traffic and background reclassification of old payloads on startup.
 
 ## wwwroot
 Contains static web assets (CSS, JavaScript, images, libraries).

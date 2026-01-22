@@ -72,6 +72,9 @@ The database is designed to separate "Hot" metadata (for fast charting) from "Co
 **Retention Policy:**
 Data is kept indefinitely to build a long-term historical record. Disk usage is monitored; if the disk approaches capacity, the maintainer will manually archive or prune old evidence blobs.
 
+### D. Automatic Reclassification (On Startup)
+To ensure the system evolves with new threats, the application performs a background reclassification of all "Unclassified" incidents whenever the service starts. It iterates through the `IncidentLog` table, retrieves the raw payload from the `EvidenceLocker`, and re-runs the current set of `IInboundClassifier` implementations to see if a more specific identification can be made.
+
 ## 5. Dashboard Architecture
 **Technology:** ASP.NET Core Blazor Server.
 **Visual Language:** "Terminal Chic" / "Sci-Fi Industrial".
