@@ -189,7 +189,7 @@
         var incidents = await db.IncidentLogs
             .Where(i => i.Timestamp >= start)
             .OrderBy(i => i.Timestamp)
-            .Select(i => new { i.Timestamp, i.Intent })
+            .Select(i => new { i.Timestamp, i.ClassifierName })
             .ToListAsync();
 
         // Calculate bucket duration
@@ -219,39 +219,65 @@
             _ => b.ToLocalTime().ToString("HH:mm")
         }).ToList();
 
-        var intents = Enum.GetValues<Intent>();
-        var datasets = new List<object>();
+        // Determine Top 8 Classifiers
+        var topClassifiers = incidents
+            .GroupBy(i => i.ClassifierName)
+            .OrderByDescending(g => g.Count())
+            .Take(8)
+            .Select(g => g.Key)
+            .ToList();
 
-        foreach (var intent in intents)
+        var datasets = new List<object>();
+        var palette = new[] { "#33b5e5", "#ff4444", "#ffbb33", "#00C851", "#9933CC", "#2BBBAD", "#ff8800", "#CC0000" };
+        
+        // Add datasets for Top 8
+        for (int i = 0; i < topClassifiers.Count; i++)
         {
+            var classifier = topClassifiers[i];
+            var color = palette[i % palette.Length];
             var data = new List<int>();
+
             foreach (var bStart in buckets)
             {
                 var bEnd = bStart.Add(bucketDuration);
-                var count = incidents.Count(i => i.Intent == intent.ToString() && i.Timestamp >= bStart && i.Timestamp < bEnd);
+                var count = incidents.Count(inc => inc.ClassifierName == classifier && inc.Timestamp >= bStart && inc.Timestamp < bEnd);
                 data.Add(count);
             }
 
             datasets.Add(new
             {
-                label = intent.ToString(),
+                label = classifier,
                 data = data,
-                backgroundColor = GetIntentColor(intent),
-                borderColor = GetIntentColor(intent),
+                backgroundColor = color,
+                borderColor = color,
+                borderWidth = 1
+            });
+        }
+
+        // Add "Other" dataset if needed
+        var otherCountTotal = incidents.Count(inc => !topClassifiers.Contains(inc.ClassifierName));
+        if (otherCountTotal > 0)
+        {
+            var data = new List<int>();
+            foreach (var bStart in buckets)
+            {
+                var bEnd = bStart.Add(bucketDuration);
+                var count = incidents.Count(inc => !topClassifiers.Contains(inc.ClassifierName) && inc.Timestamp >= bStart && inc.Timestamp < bEnd);
+                data.Add(count);
+            }
+
+            datasets.Add(new
+            {
+                label = "Other",
+                data = data,
+                backgroundColor = "#adb5bd",  // Grey
+                borderColor = "#adb5bd",
                 borderWidth = 1
             });
         }
 
         return new { labels, datasets };
     }
-
-    private string GetIntentColor(Intent intent) => intent switch
-    {
-        Intent.Exploit => "#ff4444",
-        Intent.Recon => "#33b5e5",
-        Intent.Benign => "#00C851",
-        _ => "#adb5bd"
-    };
 
     public void Dispose()
     {

@@ -46,16 +46,20 @@ To speed up UI development and avoid long build/deploy cycles:
 > [!IMPORTANT]
 > **Visual Confirmation Required:** Any agent making visual/UI changes MUST capture a browser screenshot of the final result to verify the changes are working as intended. This is a mandatory step before considering the task complete. Deploy if necessary to see changes on the live site.
 
-### 🚢 Deployment Workflow
-### 🚢 Deployment Workflow
-Run `./deploy.ps1` from the root directory.
+### 🔄 Cycle: Test -> Deploy -> Commit
+The standard lifecycle for changes is:
 
-**Workflow Steps:**
-1.  **Tests:** Runs `dotnet test`. **Aborts if tests fail.**
-2.  **Build:** Publishes for `linux-arm64` (Self-contained). **Aborts if build fails.**
-3.  **Stop:** Stops the `slurpjob` systemd service on AWS.
-4.  **Upload:** Uploads new binaries via `pscp`. *Database is preserved.*
-5.  **Start:** Restarts the service.
+1.  **Test:** Run `dotnet test` locally. **Do not proceed if tests fail.**
+2.  **Deploy:**
+    *   Ask permission for the *first* deployment.
+    *   Run `./deploy.ps1`. (See details below).
+3.  **Verify:** Check `https://dashboard.slurpjob.com/` (Ctrl+F5).
+4.  **Confirm & Commit:** **ONLY** after stability is confirmed:
+    *   Create a concise commit message.
+    *   `git push` the changes.
 
-**Verification:**
-Always verify `https://dashboard.slurpjob.com/` after deployment. Hard-refresh (Ctrl+F5) to clear cache.
+### � Reference: deploy.ps1
+The deployment script (`./deploy.ps1`) handles the heavy lifting:
+1.  **Tests:** Runs checks. Aborts on failure.
+2.  **Build:** Compiles for Linux ARM64.
+3.  **Deploy:** Stops service -> Uploads binaries -> Restarts service.
