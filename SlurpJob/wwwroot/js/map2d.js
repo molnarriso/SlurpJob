@@ -321,16 +321,6 @@ window.slurpMap2D = {
 
         const count = iso2 ? (this.countryData[iso2] || 0) : 0;
 
-        // Debug logging for France
-        if (name === 'France' || name.includes('France')) {
-            console.log('Tooltip for France:');
-            console.log('  - iso2 from GeoJSON:', iso2);
-            console.log('  - countryData keys:', Object.keys(this.countryData));
-            console.log('  - countryData[iso2]:', this.countryData[iso2]);
-            console.log('  - countryData["FR"]:', this.countryData['FR']);
-            console.log('  - Full props:', props);
-        }
-
         // Format tooltip text
         const line1 = name;
         const line2 = `Attacks: ${count}`;
@@ -387,8 +377,6 @@ window.slurpMap2D = {
 
     updateHeatmap: function (countryData) {
         this.countryData = countryData || {};
-        console.log('Map2D: updateHeatmap called with data:', countryData);
-        console.log('Map2D: FR count:', countryData['FR']);
     },
 
     dispose: function () {

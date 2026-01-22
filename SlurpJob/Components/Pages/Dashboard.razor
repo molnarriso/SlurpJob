@@ -101,9 +101,6 @@
                 _countryCounts[incident.CountryCode] = 0;
             }
             _countryCounts[incident.CountryCode]++;
-            
-            // Debug logging
-            Console.WriteLine($"Dashboard: Received incident from {incident.CountryCode}, new count: {_countryCounts[incident.CountryCode]}");
 
             // Push update to the map
             // We use Fire-and-Forget for performance, or await if we want to ensure order.
@@ -111,7 +108,6 @@
             try
             {
                 await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", _countryCounts);
-                Console.WriteLine($"Dashboard: Updated map with {_countryCounts.Count} countries");
             }
             catch (Exception ex)
             {
