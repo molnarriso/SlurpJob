@@ -185,7 +185,7 @@ public class IngestionService : BackgroundService
             {
                 if (_geoReader.TryCity(sourceIp, out var response))
                 {
-                    country = response.Country.IsoCode ?? "XX";
+                    country = response?.Country?.IsoCode ?? "XX";
                 }
             }
             catch { }

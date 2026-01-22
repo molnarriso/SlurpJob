@@ -1,8 +1,5 @@
 - Attack wiki. When an attack is detected, user should be able to click on it and view the attack details, what it does, how it works, etc. Maybe somehow the attack details should be accessible from timeline tags list, but dunno how, since there is not enough space. Or is there ? Anyway, in both cases, modal should be used. Where should the attack details be stored ?
-- Countries should blink in the map when there is an attack from them.
 - Extend payload preview in live list to double. 
 - Mobile ready view, where the  three panels are stacked vertically. Distinguish between modes by available screen space.
-- reclasify payloads after each app start 
-- Fix warnings
 - Better 2d map (antarctica is too large, europe too small)
 - Better deploy (dont reupload files not changed)

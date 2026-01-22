@@ -61,8 +61,10 @@ public class ReclassificationTests
         // We need to use reflection or make the method internal/protected to call it easily, 
         // but for now let's just use reflection since it's private.
         var method = typeof(IngestionService).GetMethod("ReclassifyUnclassifiedAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var task = (Task)method.Invoke(ingestionService, new object[] { CancellationToken.None });
-        await task;
+        Assert.NotNull(method);
+        var task = method.Invoke(ingestionService, new object[] { CancellationToken.None }) as Task;
+        Assert.NotNull(task);
+        await task!;
 
         // Assert
         using (var db = factory.CreateDbContext())
