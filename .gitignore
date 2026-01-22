@@ -490,3 +490,6 @@ FodyWeavers.xsd
 
 publish_arm64/*
 context_dump.txt
+
+# Deployment Config
+deploy.config.ps1

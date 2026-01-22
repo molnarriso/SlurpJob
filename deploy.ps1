@@ -1,9 +1,14 @@
 # Deploy SlurpJob to AWS
 
-$ServerIp = "3.127.242.167"
-$User = "ec2-user"
-$Key = "slurpjob.ppk"
-$RemotePath = "/opt/slurpjob/"
+# Load Configuration
+if (Test-Path "deploy.config.ps1") {
+    . ./deploy.config.ps1
+} else {
+    Write-Error "Configuration file 'deploy.config.ps1' not found. Please copy 'deploy.config.example.ps1' to 'deploy.config.ps1' and update your settings."
+    exit 1
+}
+
+Write-Host "Deploying to $User@$ServerIp..." -ForegroundColor DarkGray
 
 Write-Host "0. Running Tests..." -ForegroundColor Cyan
 dotnet test SlurpJob.Tests/SlurpJob.Tests.csproj
