@@ -9,4 +9,4 @@ Logic for rendering and updating the 2D Vector Map (D3.js or similar).
 Logic for the 3D Globe visualization (Three.js / Globe.gl).
 
 ## timeline.js
-Logic for rendering the stacked bar chart timeline.
+Logic for rendering the stacked bar chart timeline. Implements 3-state filtering (Exclusive -> Filtered -> Show All) on legend clicks.
