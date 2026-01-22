@@ -49,6 +49,9 @@ To speed up UI development and avoid long build/deploy cycles:
 3.  **Prototype with JS:** Inject styles or dummy data via `execute_browser_javascript` to test layouts.
 4.  **Implement:** Once you know what works visually, implement in the actual source files.
 
+> [!IMPORTANT]
+> **Visual Confirmation Required:** Any agent making visual/UI changes MUST capture a browser screenshot of the final result to verify the changes are working as intended. This is a mandatory step before considering the task complete. Deploy if necessary to see changes on the live site.
+
 ### 🚢 Deployment Workflow
 Deploying to the AWS production server:
 1.  **Script:** Run `./deploy.ps1` from the root directory.

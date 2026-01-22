@@ -12,7 +12,7 @@ Handles routing for the application.
 Global using directives for Razor components.
 
 ## LiveFeed.razor
-Component rendering the real-time feed of incidents.
+Component rendering the real-time feed of incidents. Uses a two-row layout per entry: Row 1 contains all metadata (timestamp, country, port, protocol, classifier, tag) in a compact horizontal layout; Row 2 displays the payload snippet.
 
 ## PayloadInspector.razor
 Modal/Component for inspecting raw payload details (Hex/ASCII view).
