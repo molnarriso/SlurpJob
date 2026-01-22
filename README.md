@@ -24,6 +24,14 @@ SlurpJob is a high-performance **network listener and analyzer** designed to sil
 The project targets **AWS EC2 (Amazon Linux 2023 - ARM64)**.
 
 ### Automated Deployment
+**1. Configure Deployment**
+First, create your local configuration file:
+```powershell
+Copy-Item deploy.config.example.ps1 deploy.config.ps1
+# Edit deploy.config.ps1 with your Server IP, Username, and Key Path
+```
+
+**2. Run Script**
 Use the included PowerShell script to run tests, build for Linux ARM64, and deploy to the server:
 
 ```powershell
