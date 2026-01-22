@@ -23,10 +23,11 @@
                         <span class="mx-1">&rarr;</span>
                         <span class="text-danger">Port @evt.TargetPort</span>
                     </div>
+                    <div class="mb-2">
+                        <code class="text-warning" style="font-size: 0.85rem; background-color: #2a2a2a; padding: 2px 6px; border-radius: 3px;">@evt.PayloadSnippet</code>
+                    </div>
                     <div class="mb-1">
-                        <small class="text-white-50">
-                            @evt.ClassifierName
-                        </small>
+                        <small class="text-white-50 me-2">@evt.ClassifierName</small>
                          <span class="badge @GetTagColor(evt.PrimaryTag)">@evt.PrimaryTag</span>
                     </div>
                 </button>
@@ -46,9 +47,34 @@
         public string ClassifierName { get; set; } = "";
         public IncidentTag PrimaryTag { get; set; }
         public byte[] PayloadBlob { get; set; } = Array.Empty<byte>();
+        public string PayloadSnippet { get; set; } = "";
         
         // Keep original ref if needed, but risky for serialization
         // public IncidentLog Original { get; set; } 
+    }
+    
+    /// <summary>
+    /// Extracts the first 24-32 bytes of the payload and converts to a safe ASCII string.
+    /// Non-printable characters are replaced with '.' for readability.
+    /// </summary>
+    private static string GetPayloadSnippet(byte[] payload)
+    {
+        if (payload == null || payload.Length == 0)
+            return "[empty]";
+            
+        // Extract first 32 bytes max
+        int length = Math.Min(32, payload.Length);
+        var snippet = new char[length];
+        
+        for (int i = 0; i < length; i++)
+        {
+            byte b = payload[i];
+            // Replace non-printable ASCII (< 32 or > 126) with '.'
+            // Keep printable ASCII characters
+            snippet[i] = (b >= 32 && b <= 126) ? (char)b : '.';
+        }
+        
+        return new string(snippet);
     }
 
     private List<LiveEventViewModel> _events = new();
@@ -67,6 +93,7 @@
         try 
         {
             // Map to safe ViewModel IMMEDIATELY
+            var payloadBytes = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
             var safeVm = new LiveEventViewModel
             {
                 Timestamp = incident.Timestamp,
@@ -75,7 +102,8 @@
                 TargetPort = incident.TargetPort,
                 ClassifierName = incident.ClassifierName,
                 PrimaryTag = incident.PrimaryTag,
-                PayloadBlob = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>()
+                PayloadBlob = payloadBytes,
+                PayloadSnippet = GetPayloadSnippet(payloadBytes)
             };
 
             await InvokeAsync(() =>
