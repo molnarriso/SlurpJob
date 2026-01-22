@@ -4,3 +4,4 @@
 - Mobile ready view, where the  three panels are stacked vertically. Distinguish between modes by available screen space.
 - reclasify payloads after each app start 
 - Fix warnings
+- Better 2d map (antarctica is too large, europe too small)
