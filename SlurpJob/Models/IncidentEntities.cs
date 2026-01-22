@@ -3,13 +3,23 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SlurpJob.Models;
 
-public enum IncidentTag
+public enum PayloadProtocol
+{
+    Unknown = 0,
+    HTTP = 1,
+    SSH = 2,
+    Telnet = 3,
+    FTP = 4,
+    DNS = 5,
+    TLS = 6
+}
+
+public enum Intent
 {
     Unknown = 0,
     Recon = 1,
     Exploit = 2,
-    Garbage = 3,
-    Misc = 4
+    Benign = 3
 }
 
 [Table("IncidentLog")]
@@ -24,9 +34,10 @@ public class IncidentLog
     public string SourceIp { get; set; } = string.Empty;
     public string CountryCode { get; set; } = "XX";
     public int TargetPort { get; set; }
-    public string Protocol { get; set; } = "TCP"; // TCP/UDP
+    public string Protocol { get; set; } = "TCP"; // TCP/UDP (network protocol)
     
-    public IncidentTag PrimaryTag { get; set; } = IncidentTag.Unknown;
+    public string PayloadProtocol { get; set; } = "Unknown"; // HTTP, SSH, etc.
+    public string Intent { get; set; } = "Unknown"; // Recon, Exploit, etc.
     
     public string ClassifierName { get; set; } = "Unclassified";
     

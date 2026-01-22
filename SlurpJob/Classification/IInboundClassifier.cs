@@ -5,13 +5,14 @@ namespace SlurpJob.Classification;
 public interface IInboundClassifier
 {
     string Name { get; }
-    ClassificationResult Classify(byte[] payload, string protocol, int targetPort);
+    ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort);
 }
 
 public class ClassificationResult
 {
     public string Name { get; set; } = string.Empty;
-    public IncidentTag Tag { get; set; } = IncidentTag.Unknown;
+    public PayloadProtocol Protocol { get; set; } = PayloadProtocol.Unknown;
+    public Intent Intent { get; set; } = Intent.Unknown;
     
-    public static ClassificationResult Unclassified => new() { Name = "Unclassified", Tag = IncidentTag.Unknown };
+    public static ClassificationResult Unclassified => new();
 }

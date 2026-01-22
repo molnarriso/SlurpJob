@@ -189,7 +189,7 @@
         var incidents = await db.IncidentLogs
             .Where(i => i.Timestamp >= start)
             .OrderBy(i => i.Timestamp)
-            .Select(i => new { i.Timestamp, i.PrimaryTag })
+            .Select(i => new { i.Timestamp, i.Intent })
             .ToListAsync();
 
         // Calculate bucket duration
@@ -219,25 +219,25 @@
             _ => b.ToLocalTime().ToString("HH:mm")
         }).ToList();
 
-        var tags = Enum.GetValues<IncidentTag>();
+        var intents = Enum.GetValues<Intent>();
         var datasets = new List<object>();
 
-        foreach (var tag in tags)
+        foreach (var intent in intents)
         {
             var data = new List<int>();
             foreach (var bStart in buckets)
             {
                 var bEnd = bStart.Add(bucketDuration);
-                var count = incidents.Count(i => i.PrimaryTag == tag && i.Timestamp >= bStart && i.Timestamp < bEnd);
+                var count = incidents.Count(i => i.Intent == intent.ToString() && i.Timestamp >= bStart && i.Timestamp < bEnd);
                 data.Add(count);
             }
 
             datasets.Add(new
             {
-                label = tag.ToString(),
+                label = intent.ToString(),
                 data = data,
-                backgroundColor = GetTagColor(tag),
-                borderColor = GetTagColor(tag),
+                backgroundColor = GetIntentColor(intent),
+                borderColor = GetIntentColor(intent),
                 borderWidth = 1
             });
         }
@@ -245,12 +245,11 @@
         return new { labels, datasets };
     }
 
-    private string GetTagColor(IncidentTag tag) => tag switch
+    private string GetIntentColor(Intent intent) => intent switch
     {
-        IncidentTag.Exploit => "#ff4444",
-        IncidentTag.Recon => "#33b5e5",
-        IncidentTag.Garbage => "#ffbb33",
-        IncidentTag.Misc => "#aa66cc",
+        Intent.Exploit => "#ff4444",
+        Intent.Recon => "#33b5e5",
+        Intent.Benign => "#00C851",
         _ => "#adb5bd"
     };
 

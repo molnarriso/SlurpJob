@@ -119,17 +119,17 @@ public class IngestionService : BackgroundService
             catch { }
         }
 
-        // 2. Classify
-        var classification = ClassificationResult.Unclassified;
-        foreach (var classifier in _classifiers)
-        {
-            var result = classifier.Classify(payload, protocol, targetPort);
-            if (result.Tag != IncidentTag.Unknown)
-            {
-                classification = result;
-                break; // First match wins
-            }
-        }
+        // 2. Classify (run ALL classifiers and merge results)
+        var results = _classifiers.Select(c => c.Classify(payload, protocol, targetPort)).ToList();
+        
+        // Merge: take best Protocol, best Intent, best Name
+        var bestProtocol = results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Protocol ?? PayloadProtocol.Unknown;
+        var bestIntent = results.Where(r => r.Intent != Intent.Unknown)
+                                .OrderByDescending(r => (int)r.Intent)
+                                .FirstOrDefault()?.Intent ?? Intent.Unknown;
+        var bestName = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Name 
+                       ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Name
+                       ?? "Unclassified";
         
         // 3. Create Incident
         var incident = new IncidentLog
@@ -139,8 +139,9 @@ public class IngestionService : BackgroundService
             CountryCode = country,
             TargetPort = targetPort,
             Protocol = protocol,
-            PrimaryTag = classification.Tag,
-            ClassifierName = classification.Name,
+            PayloadProtocol = bestProtocol.ToString(),
+            Intent = bestIntent.ToString(),
+            ClassifierName = bestName,
             Evidence = new EvidenceLocker
             {
                 PayloadBlob = payload
@@ -163,9 +164,9 @@ public class IngestionService : BackgroundService
         // 6. Invoke C# Event (For Blazor Server local)
         OnNewIncident?.Invoke(incident);
         
-        _logger.LogInformation($"Ingested: {protocol} {sourceIp} -> {targetPort} [{classification.Name}]");
+        _logger.LogInformation($"Ingested: {protocol} {sourceIp} -> {targetPort} [{bestName}]");
         
-        if (classification.Tag != IncidentTag.Unknown && classification.Tag != IncidentTag.Garbage)
+        if (bestIntent == Intent.Exploit)
         {
             Interlocked.Increment(ref _threatsDetected);
         }

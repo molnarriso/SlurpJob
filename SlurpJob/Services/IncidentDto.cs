@@ -9,7 +9,8 @@ public class IncidentDto
     public string CountryCode { get; set; } = "";
     public int TargetPort { get; set; }
     public string Protocol { get; set; } = "";
-    public IncidentTag PrimaryTag { get; set; }
+    public string PayloadProtocol { get; set; } = "";
+    public string Intent { get; set; } = "";
     public string ClassifierName { get; set; } = "";
     public byte[] PayloadBlob { get; set; } = Array.Empty<byte>();
 
@@ -22,7 +23,8 @@ public class IncidentDto
             CountryCode = log.CountryCode,
             TargetPort = log.TargetPort,
             Protocol = log.Protocol,
-            PrimaryTag = log.PrimaryTag,
+            PayloadProtocol = log.PayloadProtocol,
+            Intent = log.Intent,
             ClassifierName = log.ClassifierName,
             PayloadBlob = log.Evidence?.PayloadBlob ?? Array.Empty<byte>()
         };

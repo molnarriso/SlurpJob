@@ -29,8 +29,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddSingleton<SlurpJob.Services.IngestionService>();
 builder.Services.AddHostedService(p => p.GetRequiredService<SlurpJob.Services.IngestionService>());
 
-// Classifiers
-builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.BasicClassifier>();
+// Classifiers (one per pattern, all run and results merged)
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.HTTPClassifier>();
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.SSHClassifier>();
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.Log4JClassifier>();
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.EnvProbeClassifier>();
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.EmptyScanClassifier>();
 
 builder.Services.AddDbContextFactory<SlurpJob.Data.SlurpContext>(options =>
     options.UseSqlite("Data Source=slurp.db"));
@@ -42,7 +46,7 @@ using (var scope = app.Services.CreateScope())
 {
     var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SlurpJob.Data.SlurpContext>>();
     using var db = factory.CreateDbContext();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 
 
