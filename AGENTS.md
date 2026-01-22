@@ -1,6 +1,6 @@
 c:\Development\SlurpJob\AGENTS.md
 
-This is the root directory of the SlurpJob project, a network telescope and single-point sensor.
+This is the root directory of the SlurpJob project, a network telescope and exploit identifier with public dashboard.
 
 ## SlurpJob
 This folder contains the main application source code (ASP.NET Core / Blazor Server).
@@ -15,16 +15,10 @@ The master design document describing the system architecture, goals, and techni
 Instructions for setting up the Linux server environment.
 
 ## deploy.ps1
-## deploy.ps1
 PowerShell script to deploy the application to AWS. Runs tests, builds, and deploys.
-
-
 
 ## chatbot_dump.ps1
 Helper script to dump context for LLMs.
-
-## context_dump.txt
-A dump of the project context.
 
 ## slurpjob.service
 Systemd service file for running the application on Linux.
