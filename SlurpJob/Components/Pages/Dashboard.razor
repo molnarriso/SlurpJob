@@ -58,6 +58,17 @@
     private Dictionary<string, int> _countryCounts = new();
     private string _currentTimeRange = "1H";
 
+    // Centralized Filter State
+    private enum FilterMode { None, Exclusive, Filtered }
+    private class FilterState {
+        public string? SelectedKey { get; set; }
+        public FilterMode Mode { get; set; } = FilterMode.None;
+    }
+
+    private FilterState _classifierFilter = new();
+    private FilterState _countryFilter = new();
+    private List<string> _currentTopClassifiers = new(); // Tracked to handle "Other" logic
+
     protected override void OnInitialized()
     {
         Ingestion.OnNewIncident += OnIncidentReceived;
@@ -70,7 +81,7 @@
             try {
                 // Initialize Globe and Timeline
                 // Use catch to ensure one failure doesn't stop the other
-                try { await JS.InvokeVoidAsync("slurpMap2D.init", "mapViz"); } catch(Exception ex) { Console.WriteLine("Map2D Init: " + ex.Message); }
+                try { await JS.InvokeVoidAsync("slurpMap2D.init", "mapViz", DotNetObjectReference.Create(this)); } catch(Exception ex) { Console.WriteLine("Map2D Init: " + ex.Message); }
                 try { await JS.InvokeVoidAsync("slurpTimeline.init", "timelineChart", DotNetObjectReference.Create(this)); } catch(Exception ex) { Console.WriteLine("Timeline Init: " + ex.Message); }
                 
                 // Load historical country counts from database
@@ -85,6 +96,8 @@
                 await InvokeAsync(StateHasChanged);
                 try {
                     await JS.InvokeVoidAsync("slurpTimeline.update", "timelineChart");
+                    // Ensure visuals persist after update
+                    await UpdateVisuals(); // Push state again just in case chart reset
                 } catch { }
             }, null, 1000, 5000); // Update timeline every 5s
         }
@@ -94,6 +107,21 @@
     {
         if (string.IsNullOrEmpty(incident.CountryCode)) return;
 
+        // Apply Classifier Filter to Map Data
+        bool matchesClassifier = _classifierFilter.Mode == FilterMode.None;
+        if (_classifierFilter.Mode == FilterMode.Exclusive)
+        {
+            if (_classifierFilter.SelectedKey == "Other") matchesClassifier = !_currentTopClassifiers.Contains(incident.ClassifierName);
+            else matchesClassifier = incident.ClassifierName == _classifierFilter.SelectedKey;
+        }
+        else if (_classifierFilter.Mode == FilterMode.Filtered)
+        {
+             if (_classifierFilter.SelectedKey == "Other") matchesClassifier = _currentTopClassifiers.Contains(incident.ClassifierName);
+             else matchesClassifier = incident.ClassifierName != _classifierFilter.SelectedKey;
+        }
+
+        if (!matchesClassifier) return;
+
         InvokeAsync(async () =>
         {
             if (!_countryCounts.ContainsKey(incident.CountryCode))
@@ -102,27 +130,24 @@
             }
             _countryCounts[incident.CountryCode]++;
 
-            // Push update to the map
-            // We use Fire-and-Forget for performance, or await if we want to ensure order.
-            // Since this runs within InvokeAsync, awaiting is fine.
             try
             {
+                // We just send data updates. Visual state (dimming) is handled by the client's current state (or re-pushed if needed)
+                // Actually map2d.js keeps state, but better to be stateless?
+                // For now, map2d will hold the visual state until we push an update. 
+                // But wait, if we filter OUT data here, then the map gets 0 for that country or just doesn't increment?
+                // If we filter logic here, we prevent the count from increasing in memory.
+                
+                // WAIT. If we filter specific attacks, the TOTAL count for a country should reflect that filter.
+                // So yes, we should only increment if it matches the filter.
+                // AND we need to push the new numbers.
+                
                 await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", _countryCounts);
             }
             catch (Exception ex)
             {
-                // If the user navigates away, JS interop might fail.
                 Console.WriteLine($"Map Update Error: {ex.Message}");
             }
-            
-            // Note: We don't call StateHasChanged here for every single packet to avoid UI thrashing.
-            // The stats counters are updated by the _refreshTimer every 1s.
-            // The LiveFeed component handles its own updates via its own subscription if needed, 
-            // or if it binds to a list that updates. 
-            // (Assuming LiveFeed has its own logic or receives this event).
-            // Actually, looking at LiveFeed usage: <LiveFeed OnEventSelected="ShowPayload" />
-            // It seems LiveFeed might handle its own data fetching. 
-            // But for THIS task, we are only concerned with the Map.
         });
     }
 
@@ -139,24 +164,35 @@
         {
             using var db = DbFactory.CreateDbContext();
             
-            // Get all country counts from the database
-            var countryCounts = await db.IncidentLogs
-                .Where(i => !string.IsNullOrEmpty(i.CountryCode))
+            // Build Query with Classifier Filter
+            var query = db.IncidentLogs.Where(i => !string.IsNullOrEmpty(i.CountryCode));
+
+            if (_classifierFilter.Mode == FilterMode.Exclusive)
+            {
+                if (_classifierFilter.SelectedKey == "Other")
+                    query = query.Where(i => !_currentTopClassifiers.Contains(i.ClassifierName));
+                else
+                   query = query.Where(i => i.ClassifierName == _classifierFilter.SelectedKey);
+            }
+            else if (_classifierFilter.Mode == FilterMode.Filtered)
+            {
+                if (_classifierFilter.SelectedKey == "Other")
+                     query = query.Where(i => _currentTopClassifiers.Contains(i.ClassifierName));
+                else
+                    query = query.Where(i => i.ClassifierName != _classifierFilter.SelectedKey);
+            }
+            
+            var countryCounts = await query
                 .GroupBy(i => i.CountryCode)
                 .Select(g => new { CountryCode = g.Key, Count = g.Count() })
                 .ToListAsync();
             
-            // Populate the dictionary
             _countryCounts.Clear();
             foreach (var item in countryCounts)
             {
                 _countryCounts[item.CountryCode] = item.Count;
             }
             
-            Console.WriteLine($"Dashboard: Loaded {_countryCounts.Count} countries from database");
-            Console.WriteLine($"Dashboard: FR count from DB: {(_countryCounts.ContainsKey("FR") ? _countryCounts["FR"] : 0)}");
-            
-            // Update the map with the loaded data
             await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", _countryCounts);
         }
         catch (Exception ex)
@@ -173,6 +209,123 @@
     }
 
     [JSInvokable]
+    public async Task OnClassifierClicked(string classifierName)
+    {
+        // Mutually Exclusive: Reset Country Filter
+        if (_countryFilter.Mode != FilterMode.None)
+        {
+            _countryFilter = new FilterState();
+        }
+
+        // Cycle State: None -> Exclusive -> Filtered -> None
+        // Switching Category: -> Exclusive
+        
+        if (_classifierFilter.SelectedKey != classifierName)
+        {
+            _classifierFilter.SelectedKey = classifierName;
+            _classifierFilter.Mode = FilterMode.Exclusive;
+        }
+        else
+        {
+            _classifierFilter.Mode = _classifierFilter.Mode switch
+            {
+                FilterMode.None => FilterMode.Exclusive,
+                FilterMode.Exclusive => FilterMode.Filtered,
+                FilterMode.Filtered => FilterMode.None,
+                _ => FilterMode.None
+            };
+            
+            if (_classifierFilter.Mode == FilterMode.None) _classifierFilter.SelectedKey = null;
+        }
+
+        // 1. Update Map Data (Historical + Live logic)
+        await LoadHistoricalCountryCounts();
+        
+        // 2. Update Visuals (Push to JS)
+        await UpdateVisuals();
+    }
+
+    [JSInvokable]
+    public async Task OnCountryClicked(string isoCode)
+    {
+        // Mutually Exclusive: Reset Classifier Filter
+        if (_classifierFilter.Mode != FilterMode.None)
+        {
+            _classifierFilter = new FilterState();
+            // We must reload historical counts to show ALL classifiers again for the new country selection
+            // Actually LoadHistoricalCountryCounts depends on ClassifierFilter, so resetting it affects map data too?
+            // Wait. LoadHistoricalCountryCounts uses _classifierFilter to filter the MAP DATA.
+            // If we reset _classifierFilter, we should reload map data?
+            // Yes, "LoadHistoricalCountryCounts" reloads the map counts based on the current classifier filter.
+            // So if we clear classifier filter, we expect map to show all attacks (filtered by country visually? No, map data is total counts).
+            // Actually, LoadHistoricalCountryCounts updates `_countryCounts`.
+            await LoadHistoricalCountryCounts();
+        }
+
+        if (_countryFilter.SelectedKey != isoCode)
+        {
+            _countryFilter.SelectedKey = isoCode;
+            _countryFilter.Mode = FilterMode.Exclusive;
+        }
+        else
+        {
+            _countryFilter.Mode = _countryFilter.Mode switch
+            {
+                FilterMode.None => FilterMode.Exclusive,
+                FilterMode.Exclusive => FilterMode.Filtered,
+                FilterMode.Filtered => FilterMode.None,
+                _ => FilterMode.None
+            };
+             if (_countryFilter.Mode == FilterMode.None) _countryFilter.SelectedKey = null;
+        }
+
+        // 1. Update Timeline Data (GetChartData will handle this on next update)
+        await JS.InvokeVoidAsync("slurpTimeline.update", "timelineChart"); // Pulls new data
+        
+        // 2. Update Visuals
+        await UpdateVisuals();
+    }
+
+    private async Task UpdateVisuals()
+    {
+        // Calculate Timeline Visuals (Hidden Labels)
+        var timelineHidden = new List<string>();
+        // Note: Timeline handles hiding visually separately from data filtering?
+        // Wait, current timeline.js hides datasets. 
+        // If we filter by Country, the data changes.
+        // If we filter by Classifier, the visuals change (hide bars).
+        
+        // Classifier Logic for Timeline Visuals
+        if (_classifierFilter.Mode == FilterMode.Exclusive && _classifierFilter.SelectedKey != null)
+        {
+            // Hide everything except Selected
+            // We need to know all categories. _currentTopClassifiers + "Other"
+            var all = new List<string>(_currentTopClassifiers); 
+            // We can't know if "Other" exists here easily without data, but reasonable guess
+            all.Add("Other");
+            
+            foreach (var c in all) if (c != _classifierFilter.SelectedKey) timelineHidden.Add(c);
+        }
+        else if (_classifierFilter.Mode == FilterMode.Filtered && _classifierFilter.SelectedKey != null)
+        {
+            timelineHidden.Add(_classifierFilter.SelectedKey);
+        }
+        
+        // Calculate Map Visuals
+        object mapVisuals = new { 
+            activeCountry = _countryFilter.SelectedKey, 
+            mode = _countryFilter.Mode.ToString() 
+        };
+
+        var visuals = new {
+            timeline = timelineHidden,
+            map = mapVisuals
+        };
+
+        await JS.InvokeVoidAsync("slurp.updateVisuals", visuals);
+    }
+
+    [JSInvokable]
     public async Task<object> GetChartData()
     {
         var now = DateTime.UtcNow;
@@ -186,8 +339,20 @@
         };
 
         using var db = DbFactory.CreateDbContext();
-        var incidents = await db.IncidentLogs
-            .Where(i => i.Timestamp >= start)
+        
+        // Apply Country Filter
+        var query = db.IncidentLogs.Where(i => i.Timestamp >= start);
+        
+        if (_countryFilter.Mode == FilterMode.Exclusive && _countryFilter.SelectedKey != null)
+        {
+            query = query.Where(i => i.CountryCode == _countryFilter.SelectedKey);
+        }
+        else if (_countryFilter.Mode == FilterMode.Filtered && _countryFilter.SelectedKey != null)
+        {
+            query = query.Where(i => i.CountryCode != _countryFilter.SelectedKey);
+        }
+
+        var incidents = await query
             .OrderBy(i => i.Timestamp)
             .Select(i => new { i.Timestamp, i.ClassifierName })
             .ToListAsync();
@@ -204,12 +369,8 @@
 
         // Create buckets
         var buckets = new List<DateTime>();
-        // Round start down to nearest bucket
         var bucketStart = new DateTime(start.Ticks - (start.Ticks % bucketDuration.Ticks), start.Kind);
-        for (var t = bucketStart; t <= now; t = t.Add(bucketDuration))
-        {
-            buckets.Add(t);
-        }
+        for (var t = bucketStart; t <= now; t = t.Add(bucketDuration)) buckets.Add(t);
 
         var labels = buckets.Select(b => _currentTimeRange switch {
             "1H" => b.ToLocalTime().ToString("HH:mm"),
@@ -226,11 +387,12 @@
             .Take(8)
             .Select(g => g.Key)
             .ToList();
+            
+        _currentTopClassifiers = topClassifiers; // Update tracked list
 
         var datasets = new List<object>();
         var palette = new[] { "#33b5e5", "#ff4444", "#ffbb33", "#00C851", "#9933CC", "#2BBBAD", "#ff8800", "#CC0000" };
         
-        // Add datasets for Top 8
         for (int i = 0; i < topClassifiers.Count; i++)
         {
             var classifier = topClassifiers[i];
@@ -244,17 +406,9 @@
                 data.Add(count);
             }
 
-            datasets.Add(new
-            {
-                label = classifier,
-                data = data,
-                backgroundColor = color,
-                borderColor = color,
-                borderWidth = 1
-            });
+            datasets.Add(new { label = classifier, data = data, backgroundColor = color, borderColor = color, borderWidth = 1 });
         }
 
-        // Add "Other" dataset if needed
         var otherCountTotal = incidents.Count(inc => !topClassifiers.Contains(inc.ClassifierName));
         if (otherCountTotal > 0)
         {
@@ -265,15 +419,7 @@
                 var count = incidents.Count(inc => !topClassifiers.Contains(inc.ClassifierName) && inc.Timestamp >= bStart && inc.Timestamp < bEnd);
                 data.Add(count);
             }
-
-            datasets.Add(new
-            {
-                label = "Other",
-                data = data,
-                backgroundColor = "#adb5bd",  // Grey
-                borderColor = "#adb5bd",
-                borderWidth = 1
-            });
+            datasets.Add(new { label = "Other", data = data, backgroundColor = "#adb5bd", borderColor = "#adb5bd", borderWidth = 1 });
         }
 
         return new { labels, datasets };

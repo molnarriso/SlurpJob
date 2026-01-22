@@ -9,6 +9,8 @@ window.slurpMap2D = {
     hoveredCountry: null,
     mouseX: 0,
     mouseY: 0,
+    dotNetRef: null,
+    visualState: { activeCountry: null, mode: 'None' }, // { activeCountry: 'FR', mode: 'Exclusive'|'Filtered'|'None' }
 
     // ISO Alpha-2 to Alpha-3 mapping (same as globe)
     iso2to3: {
@@ -24,19 +26,21 @@ window.slurpMap2D = {
         'AE': 'ARE'
     },
 
-    init: function (elementId) {
+    init: function (elementId, dotNetRef) {
         this.canvas = document.getElementById(elementId);
         if (!this.canvas) {
             console.error('2D Map canvas not found');
             return;
         }
 
+        this.dotNetRef = dotNetRef;
         this.ctx = this.canvas.getContext('2d');
         this.resize();
 
         // Add mouse event listeners for interactivity
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         this.canvas.addEventListener('mouseleave', () => this.handleMouseLeave());
+        this.canvas.addEventListener('click', (e) => this.handleClick(e));
 
         window.addEventListener('resize', () => this.resize());
 
@@ -102,6 +106,15 @@ window.slurpMap2D = {
         this.canvas.style.cursor = 'default';
     },
 
+    handleClick: function (e) {
+        if (!this.hoveredCountry || !this.dotNetRef) return;
+
+        const iso2 = this.getIsoCode(this.hoveredCountry);
+        if (iso2) {
+            this.dotNetRef.invokeMethodAsync('OnCountryClicked', iso2);
+        }
+    },
+
     isPointInCountry: function (x, y, geometry) {
         if (!geometry || !this.ctx) return false;
 
@@ -145,10 +158,36 @@ window.slurpMap2D = {
         }
     },
 
+    updateVisuals: function (visuals) {
+        // visuals = { activeCountry: 'FR', mode: 'Exclusive' }
+        if (visuals) {
+            this.visualState = visuals;
+            // No need to manually redraw, loop will pick it up
+        }
+    },
+
+    getIsoCode: function (feature) {
+        const props = feature.properties || {};
+        let iso2 = props.ISO_A2 || props.iso_a2;
+        if (iso2 === "-99" || iso2 === -99) iso2 = null;
+        if (!iso2) {
+            iso2 = props.ISO_A2_EH || props.iso_a2_eh;
+            if (iso2 === "-99" || iso2 === -99) iso2 = null;
+        }
+        if (!iso2) {
+            let iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3;
+            if (!iso3 || iso3 === "-99" || iso3 === -99) iso3 = props.ISO_A3_EH || props.iso_a3_eh;
+            if (!iso3 || iso3 === "-99" || iso3 === -99) iso3 = props.ADM0_A3;
+            if (iso3 && iso3 !== "-99" && iso3 !== -99) iso2 = Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3);
+        }
+        return iso2;
+    },
+
     draw: function () {
         const ctx = this.ctx;
         const w = this.canvas.width;
         const h = this.canvas.height;
+        const { activeCountry, mode } = this.visualState;
 
         // Clear with black background
         ctx.fillStyle = '#000000';
@@ -157,50 +196,39 @@ window.slurpMap2D = {
         // Draw countries if loaded
         if (this.countries && this.projection) {
             this.countries.forEach(feature => {
-                // Handle different property naming conventions
-                const props = feature.properties || {};
-
-                // Try to get ISO2 code directly first (attack data uses ISO2)
-                let iso2 = props.ISO_A2 || props.iso_a2;
-
-                // Filter out invalid ISO codes (Natural Earth uses "-99" for some territories)
-                if (iso2 === "-99" || iso2 === -99) {
-                    iso2 = null;
-                }
-
-                // Try Extended Hierarchy variant (used for countries with territories like France)
-                if (!iso2) {
-                    iso2 = props.ISO_A2_EH || props.iso_a2_eh;
-                    if (iso2 === "-99" || iso2 === -99) {
-                        iso2 = null;
-                    }
-                }
-
-                // If not found or invalid, try converting from ISO3
-                if (!iso2) {
-                    let iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3;
-                    // Try Extended Hierarchy variant for ISO3
-                    if (!iso3 || iso3 === "-99" || iso3 === -99) {
-                        iso3 = props.ISO_A3_EH || props.iso_a3_eh;
-                    }
-                    // Try ADM0_A3 as final fallback
-                    if (!iso3 || iso3 === "-99" || iso3 === -99) {
-                        iso3 = props.ADM0_A3;
-                    }
-                    // Convert ISO3 to ISO2
-                    if (iso3 && iso3 !== "-99" && iso3 !== -99) {
-                        iso2 = Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3);
-                    }
-                }
-
+                const iso2 = this.getIsoCode(feature);
                 const count = iso2 ? (this.countryData[iso2] || 0) : 0;
+                let color = this.getHeatColor(count);
+                let borderStyle = null;
 
-                // Get color for country
-                const color = this.getHeatColor(count);
+                // --- Visual State Logic ---
+                if (activeCountry && mode !== 'None') {
+                    if (iso2 === activeCountry) {
+                        // This is the active country
+                        if (mode === 'Filtered') {
+                            // Filtered out -> Black (Hide) + Red Border
+                            color = '#000000';
+                            borderStyle = { color: '#ff4444', width: 2 };
+                        } else {
+                            // Exclusive -> Normal (Highlight?) + Green Border
+                            // color = color; // Keep heat map color
+                            borderStyle = { color: '#00C851', width: 2 };
+                        }
+                    } else {
+                        // This is OTHER countries
+                        if (mode === 'Exclusive') {
+                            // Exclusive -> Dim others
+                            color = this.dimColor(color, 0.2);
+                        } else {
+                            // Filtered -> Others are normal
+                        }
+                    }
+                }
+                // --------------------------
 
                 // Draw country polygon
                 const isHovered = this.hoveredCountry === feature;
-                this.drawCountry(feature.geometry, color, isHovered);
+                this.drawCountry(feature.geometry, color, isHovered, borderStyle);
             });
         }
 
@@ -232,17 +260,29 @@ window.slurpMap2D = {
         }
     },
 
-    drawCountry: function (geometry, fillColor, isHovered) {
+    dimColor: function (rgbaString, opacityResult) {
+        // Quick regex parse of 'rgba(r, g, b, a)'
+        // If it's not rgba, ignore for now (should be consistent though)
+        if (rgbaString.startsWith('rgba')) {
+            return rgbaString.replace(/, [\d\.]+\)$/, `, ${opacityResult})`);
+        }
+        return rgbaString;
+    },
+
+    drawCountry: function (geometry, fillColor, isHovered, borderStyle) {
         const ctx = this.ctx;
 
         if (!geometry || !this.projection) return;
 
         ctx.fillStyle = fillColor;
 
-        // Highlight hovered country
+        // Border Styling Hierarchy: Hover > Visual State > Default
         if (isHovered) {
             ctx.strokeStyle = '#0ff';
             ctx.lineWidth = 2;
+        } else if (borderStyle) {
+            ctx.strokeStyle = borderStyle.color;
+            ctx.lineWidth = borderStyle.width;
         } else {
             ctx.strokeStyle = '#222';
             ctx.lineWidth = 0.5;
@@ -288,37 +328,7 @@ window.slurpMap2D = {
 
         // Get country name and code
         const name = props.NAME || props.name || props.ADMIN || 'Unknown';
-        let iso2 = props.ISO_A2 || props.iso_a2;
-
-        // Filter out invalid ISO codes
-        if (iso2 === "-99" || iso2 === -99) {
-            iso2 = null;
-        }
-
-        // Try Extended Hierarchy variant (used for countries with territories like France)
-        if (!iso2) {
-            iso2 = props.ISO_A2_EH || props.iso_a2_eh;
-            if (iso2 === "-99" || iso2 === -99) {
-                iso2 = null;
-            }
-        }
-
-        if (!iso2) {
-            let iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3;
-            // Try Extended Hierarchy variant for ISO3
-            if (!iso3 || iso3 === "-99" || iso3 === -99) {
-                iso3 = props.ISO_A3_EH || props.iso_a3_eh;
-            }
-            // Try ADM0_A3 as final fallback
-            if (!iso3 || iso3 === "-99" || iso3 === -99) {
-                iso3 = props.ADM0_A3;
-            }
-            // Convert ISO3 to ISO2
-            if (iso3 && iso3 !== "-99" && iso3 !== -99) {
-                iso2 = Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3);
-            }
-        }
-
+        const iso2 = this.getIsoCode(this.hoveredCountry);
         const count = iso2 ? (this.countryData[iso2] || 0) : 0;
 
         // Format tooltip text
@@ -377,6 +387,12 @@ window.slurpMap2D = {
 
     updateHeatmap: function (countryData) {
         this.countryData = countryData || {};
+    },
+
+    updateVisuals: function (visuals) {
+        if (visuals) {
+            this.visualState = visuals; // { activeCountry, mode }
+        }
     },
 
     dispose: function () {

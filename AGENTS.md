@@ -56,6 +56,7 @@ The standard lifecycle for changes is:
 3.  **Verify:** Check `https://dashboard.slurpjob.com/` (Ctrl+F5).
 4.  **Confirm & Commit:** **ONLY** after stability is confirmed:
     *   Create a concise commit message.
+    *   **Complex Commits:** For refactors or large features, use a **verbose, bulleted** message instead of a single line.
     *   `git push` the changes.
 
 ### � Reference: deploy.ps1
