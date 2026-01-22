@@ -11,6 +11,7 @@ window.slurpMap2D = {
     mouseY: 0,
     dotNetRef: null,
     visualState: { activeCountry: null, mode: 'None' }, // { activeCountry: 'FR', mode: 'Exclusive'|'Filtered'|'None' }
+    blinkingCountries: {},
 
     // ISO Alpha-2 to Alpha-3 mapping (same as globe)
     iso2to3: {
@@ -166,6 +167,15 @@ window.slurpMap2D = {
         }
     },
 
+    triggerBlink: function (isoCode) {
+        if (!isoCode) return;
+        this.blinkingCountries[isoCode] = Date.now();
+        if (!this.animating) {
+            this.animating = true;
+            this.animate();
+        }
+    },
+
     getIsoCode: function (feature) {
         const props = feature.properties || {};
         let iso2 = props.ISO_A2 || props.iso_a2;
@@ -229,6 +239,32 @@ window.slurpMap2D = {
                 // Draw country polygon
                 const isHovered = this.hoveredCountry === feature;
                 this.drawCountry(feature.geometry, color, isHovered, borderStyle);
+
+                // Draw blink overlay (Explosion Effect)
+                if (this.blinkingCountries[iso2]) {
+                    const start = this.blinkingCountries[iso2];
+                    const elapsed = Date.now() - start;
+                    const duration = 1000;
+                    if (elapsed < duration) {
+                        const progress = elapsed / duration;
+                        // Exponential ease-out for better "pop"
+                        const ease = 1 - Math.pow(1 - progress, 3);
+
+                        // Width grows significantly
+                        const maxLineWidth = 50;
+                        const lineWidth = 1 + (maxLineWidth * ease);
+
+                        // Opacity fades out
+                        const opacity = 1 - ease;
+                        const blinkColor = `rgba(255, 68, 68, ${opacity})`; // Reddish explosion
+
+                        // Draw expanding stroke (transparent fill)
+                        // Reuse drawCountry but focusing on the stroke
+                        this.drawCountry(feature.geometry, 'transparent', false, { color: blinkColor, width: lineWidth });
+                    } else {
+                        delete this.blinkingCountries[iso2];
+                    }
+                }
             });
         }
 
@@ -269,7 +305,7 @@ window.slurpMap2D = {
         return rgbaString;
     },
 
-    drawCountry: function (geometry, fillColor, isHovered, borderStyle) {
+    drawCountry: function (geometry, fillColor, isHovered, borderStyle, skipStroke = false) {
         const ctx = this.ctx;
 
         if (!geometry || !this.projection) return;
@@ -308,7 +344,7 @@ window.slurpMap2D = {
 
             ctx.closePath();
             ctx.fill();
-            ctx.stroke();
+            if (!skipStroke) ctx.stroke();
         };
 
         if (geometry.type === 'Polygon') {

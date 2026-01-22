@@ -42,6 +42,7 @@ To speed up UI development and avoid long build/deploy cycles:
 2.  **Verify via Screenshots:** Use the `browser_subagent` to capture screenshots and confirm the visual state.
 3.  **Prototype with JS:** Inject styles or dummy data via `execute_browser_javascript` to test layouts.
 4.  **Implement:** Once you know what works visually, implement in the actual source files.
+5.  **Local Testing Constraint:** Do NOT rely on local execution (`dotnet run`) to verify features that require live internet traffic (like `IngestionService` receiving packets). The local environment is not public-facing. Use unit tests, static analysis, or mocked data for these cases.
 
 > [!IMPORTANT]
 > **Visual Confirmation Required:** Any agent making visual/UI changes MUST capture a browser screenshot of the final result to verify the changes are working as intended. This is a mandatory step before considering the task complete. Deploy if necessary to see changes on the live site.

@@ -143,6 +143,9 @@
                 // AND we need to push the new numbers.
                 
                 await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", _countryCounts);
+                
+                // Trigger blink effect
+                await JS.InvokeVoidAsync("slurpMap2D.triggerBlink", incident.CountryCode);
             }
             catch (Exception ex)
             {
