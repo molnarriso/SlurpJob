@@ -59,8 +59,8 @@
         if (payload == null || payload.Length == 0)
             return "[empty]";
             
-        // Extract first 32 bytes max
-        int length = Math.Min(32, payload.Length);
+        // Extract first 64 bytes max
+        int length = Math.Min(64, payload.Length);
         var snippet = new char[length];
         
         for (int i = 0; i < length; i++)
