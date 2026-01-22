@@ -18,7 +18,7 @@ SlurpJob is a high-performance **network listener and analyzer** designed to sil
 *   **Visualization:** Provides a real-time **Blazor Server Dashboard** to view live attacks, timelines, and a heatmap of global activity.
 *   **Architecture:** Uses a "Split-Horizon" setup:
     *   **Honeypot:** Exposed on the public IP via `iptables` redirection.
-    *   **Dashboard:** Securely accessible via **Cloudflare Tunnel** (no open management ports).
+    *   **Dashboard:** Securely accessible via **Cloudflare Tunnel** (ensures dashboard has a different IP from the honeypot & no open management ports).
 
 ## 🚀 How to Deploy
 The project targets **AWS EC2 (Amazon Linux 2023 - ARM64)**.
