@@ -11,7 +11,8 @@ public enum PayloadProtocol
     Telnet = 3,
     FTP = 4,
     DNS = 5,
-    TLS = 6
+    TLS = 6,
+    SIP = 7
 }
 
 public enum Intent

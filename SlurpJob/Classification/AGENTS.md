@@ -1,6 +1,7 @@
 c:\Development\SlurpJob\SlurpJob\Classification\AGENTS.md
 
 This folder contains classes responsible for analyzing and classifying incoming payloads. Each classifier focuses on a single pattern or protocol.
+These classifiers are consumed by `SlurpJob.Services.IngestionService` which aggregates their results to produce a final `IncidentLog`.
 
 ## IInboundClassifier.cs
 Interface defining the contract for all classifier implementations. Returns `ClassificationResult` with Protocol, Intent, and Name.

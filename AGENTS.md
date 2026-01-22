@@ -15,10 +15,10 @@ The master design document describing the system architecture, goals, and techni
 Instructions for setting up the Linux server environment.
 
 ## deploy.ps1
-PowerShell script to deploy the application to AWS. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+## deploy.ps1
+PowerShell script to deploy the application to AWS. Runs tests, builds, and deploys.
 
-## DEPLOYMENT.md
-Comprehensive deployment guide including troubleshooting and workflows.
+
 
 ## chatbot_dump.ps1
 Helper script to dump context for LLMs.
@@ -53,13 +53,15 @@ To speed up UI development and avoid long build/deploy cycles:
 > **Visual Confirmation Required:** Any agent making visual/UI changes MUST capture a browser screenshot of the final result to verify the changes are working as intended. This is a mandatory step before considering the task complete. Deploy if necessary to see changes on the live site.
 
 ### 🚢 Deployment Workflow
-Deploying to the AWS production server:
-1.  **Script:** Run `./deploy.ps1` from the root directory.
-2.  **Process:**
-    - Publishes the app for `linux-arm64` (Self-contained).
-    - Stops the `slurpjob` systemd service.
-    - Nukes the old `slurp.db` (Caution: data is lost).
-    - Uploads files via `pscp`.
-    - Ensures GeoIP database is present.
-    - Restarts the service.
-3.  **Verification:** Always verify `https://dashboard.slurpjob.com/` after deployment.
+### 🚢 Deployment Workflow
+Run `./deploy.ps1` from the root directory.
+
+**Workflow Steps:**
+1.  **Tests:** Runs `dotnet test`. **Aborts if tests fail.**
+2.  **Build:** Publishes for `linux-arm64` (Self-contained). **Aborts if build fails.**
+3.  **Stop:** Stops the `slurpjob` systemd service on AWS.
+4.  **Upload:** Uploads new binaries via `pscp`. *Database is preserved.*
+5.  **Start:** Restarts the service.
+
+**Verification:**
+Always verify `https://dashboard.slurpjob.com/` after deployment. Hard-refresh (Ctrl+F5) to clear cache.

@@ -5,6 +5,14 @@ $User = "ec2-user"
 $Key = "slurpjob.ppk"
 $RemotePath = "/opt/slurpjob/"
 
+Write-Host "0. Running Tests..." -ForegroundColor Cyan
+dotnet test SlurpJob.Tests/SlurpJob.Tests.csproj
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Tests failed! Deployment aborted."
+    exit 1
+}
+
 Write-Host "1. Publishing for Linux ARM64..." -ForegroundColor Cyan
 dotnet publish SlurpJob/SlurpJob.csproj -c Release -r linux-arm64 --self-contained -p:PublishSingleFile=true -o ./publish_arm64
 
@@ -16,8 +24,6 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "2. Stopping Service..." -ForegroundColor Cyan
 plink -batch -i $Key -ssh $User@$ServerIp "sudo systemctl stop slurpjob"
 
-# Write-Host "2b. Nuke Old Database..." -ForegroundColor Red
-# plink -batch -i $Key -ssh $User@$ServerIp "sudo rm -f $RemotePath/slurp.db"
 
 Write-Host "3. Uploading Files..." -ForegroundColor Cyan
 pscp -batch -i $Key -r publish_arm64/* $User@$ServerIp`:$RemotePath
