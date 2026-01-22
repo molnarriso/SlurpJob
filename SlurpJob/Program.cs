@@ -36,6 +36,7 @@ builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJ
 builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.EnvProbeClassifier>();
 builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.EmptyScanClassifier>();
 builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.SIPClassifier>();
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.SSDPClassifier>();
 
 builder.Services.AddDbContextFactory<SlurpJob.Data.SlurpContext>(options =>
     options.UseSqlite("Data Source=slurp.db"));

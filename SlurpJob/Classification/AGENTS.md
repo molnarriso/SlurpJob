@@ -20,3 +20,6 @@ Detects probing for sensitive config files (.env, .git/config).
 
 ## EmptyScanClassifier.cs
 Classifies empty payloads as reconnaissance scans.
+
+## SSDPClassifier.cs
+Detects SSDP (Simple Service Discovery Protocol) traffic (M-SEARCH and NOTIFY) used for UPnP discovery.
