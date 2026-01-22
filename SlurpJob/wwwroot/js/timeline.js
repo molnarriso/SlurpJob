@@ -33,6 +33,7 @@ window.slurpTimeline = {
                 },
                 plugins: {
                     legend: {
+                        display: false,
                         labels: { color: '#adb5bd' },
                         onClick: function (e, legendItem, legend) {
                             // Dumb View: Just report the click to C#

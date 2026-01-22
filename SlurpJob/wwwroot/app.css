@@ -197,3 +197,93 @@ article,
     font-weight: bold !important;
     box-shadow: 0 0 15px rgba(255, 153, 0, 0.4) !important;
 }
+
+/* Custom Legend */
+.custom-legend {
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    right: 150px !important;
+    /* Avoid overlap with controls */
+    z-index: 120 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    pointer-events: none !important;
+    /* Allow clicks to pass through container */
+}
+
+.legend-pill {
+    pointer-events: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    background: #222 !important;
+    /* Solid background to prevent bleed-through */
+    border: 1px solid #444 !important;
+    border-radius: 20px !important;
+    padding: 2px 6px 2px 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    user-select: none !important;
+}
+
+.legend-pill:hover {
+    border-color: var(--hover-color, #ff9900) !important;
+    background: #333 !important;
+    /* Solid background on hover */
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.legend-indicator {
+    width: 10px !important;
+    /* Slightly larger color dots */
+    height: 10px !important;
+    border-radius: 50% !important;
+    margin-right: 8px !important;
+}
+
+.legend-label {
+    font-size: 0.7rem !important;
+    color: #eee !important;
+    font-weight: 500 !important;
+    margin-right: 8px !important;
+    letter-spacing: 0.3px !important;
+}
+
+.legend-count {
+    color: #0ff !important;
+    font-family: monospace !important;
+    font-size: 0.7rem !important;
+    opacity: 0.8 !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Legend States */
+.legend-pill.selective {
+    border-color: #ff9900 !important;
+    background: rgba(255, 153, 0, 0.15) !important;
+    box-shadow: 0 0 10px rgba(255, 153, 0, 0.2) !important;
+}
+
+.legend-pill.selective .legend-label {
+    color: #ff9900 !important;
+    font-weight: 700 !important;
+}
+
+.legend-pill.filtered {
+    border-color: #ff4444 !important;
+    opacity: 0.6 !important;
+    text-decoration: line-through !important;
+}
+
+.legend-pill.dimmed {
+    opacity: 0.3 !important;
+    filter: grayscale(0.8) !important;
+    transform: scale(0.95) !important;
+}
+
+.legend-pill.dimmed:hover {
+    opacity: 0.5 !important;
+    filter: grayscale(0.4) !important;
+}
