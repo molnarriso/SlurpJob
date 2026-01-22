@@ -153,6 +153,20 @@ article,
     color: #0ff;
 }
 
+/* GitHub Link */
+.github-link {
+    font-weight: 900;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    color: #fff;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.github-link:hover {
+    color: #ff9900;
+}
+
 /* Kill any other layout attempts */
 .left-panel,
 .bottom-panel,
