@@ -72,6 +72,9 @@
                 // Use catch to ensure one failure doesn't stop the other
                 try { await JS.InvokeVoidAsync("slurpMap2D.init", "mapViz"); } catch(Exception ex) { Console.WriteLine("Map2D Init: " + ex.Message); }
                 try { await JS.InvokeVoidAsync("slurpTimeline.init", "timelineChart", DotNetObjectReference.Create(this)); } catch(Exception ex) { Console.WriteLine("Timeline Init: " + ex.Message); }
+                
+                // Load historical country counts from database
+                await LoadHistoricalCountryCounts();
             } catch (Exception ex) {
                 Console.WriteLine("JS Init Failed: " + ex.Message);
             }
@@ -98,6 +101,9 @@
                 _countryCounts[incident.CountryCode] = 0;
             }
             _countryCounts[incident.CountryCode]++;
+            
+            // Debug logging
+            Console.WriteLine($"Dashboard: Received incident from {incident.CountryCode}, new count: {_countryCounts[incident.CountryCode]}");
 
             // Push update to the map
             // We use Fire-and-Forget for performance, or await if we want to ensure order.
@@ -105,6 +111,7 @@
             try
             {
                 await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", _countryCounts);
+                Console.WriteLine($"Dashboard: Updated map with {_countryCounts.Count} countries");
             }
             catch (Exception ex)
             {
@@ -128,6 +135,38 @@
         if (incident == null) return;
         var payload = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
         _payloadInspector.Open(payload);
+    }
+
+    private async Task LoadHistoricalCountryCounts()
+    {
+        try
+        {
+            using var db = DbFactory.CreateDbContext();
+            
+            // Get all country counts from the database
+            var countryCounts = await db.IncidentLogs
+                .Where(i => !string.IsNullOrEmpty(i.CountryCode))
+                .GroupBy(i => i.CountryCode)
+                .Select(g => new { CountryCode = g.Key, Count = g.Count() })
+                .ToListAsync();
+            
+            // Populate the dictionary
+            _countryCounts.Clear();
+            foreach (var item in countryCounts)
+            {
+                _countryCounts[item.CountryCode] = item.Count;
+            }
+            
+            Console.WriteLine($"Dashboard: Loaded {_countryCounts.Count} countries from database");
+            Console.WriteLine($"Dashboard: FR count from DB: {(_countryCounts.ContainsKey("FR") ? _countryCounts["FR"] : 0)}");
+            
+            // Update the map with the loaded data
+            await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", _countryCounts);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load historical country counts: {ex.Message}");
+        }
     }
 
     private async Task SetTimeRange(string range)

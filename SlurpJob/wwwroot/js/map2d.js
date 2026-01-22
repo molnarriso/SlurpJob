@@ -163,10 +163,34 @@ window.slurpMap2D = {
                 // Try to get ISO2 code directly first (attack data uses ISO2)
                 let iso2 = props.ISO_A2 || props.iso_a2;
 
-                // If not found, try converting from ISO3
+                // Filter out invalid ISO codes (Natural Earth uses "-99" for some territories)
+                if (iso2 === "-99" || iso2 === -99) {
+                    iso2 = null;
+                }
+
+                // Try Extended Hierarchy variant (used for countries with territories like France)
                 if (!iso2) {
-                    const iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3 || props.ADM0_A3;
-                    iso2 = iso3 ? Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3) : null;
+                    iso2 = props.ISO_A2_EH || props.iso_a2_eh;
+                    if (iso2 === "-99" || iso2 === -99) {
+                        iso2 = null;
+                    }
+                }
+
+                // If not found or invalid, try converting from ISO3
+                if (!iso2) {
+                    let iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3;
+                    // Try Extended Hierarchy variant for ISO3
+                    if (!iso3 || iso3 === "-99" || iso3 === -99) {
+                        iso3 = props.ISO_A3_EH || props.iso_a3_eh;
+                    }
+                    // Try ADM0_A3 as final fallback
+                    if (!iso3 || iso3 === "-99" || iso3 === -99) {
+                        iso3 = props.ADM0_A3;
+                    }
+                    // Convert ISO3 to ISO2
+                    if (iso3 && iso3 !== "-99" && iso3 !== -99) {
+                        iso2 = Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3);
+                    }
                 }
 
                 const count = iso2 ? (this.countryData[iso2] || 0) : 0;
@@ -265,12 +289,47 @@ window.slurpMap2D = {
         // Get country name and code
         const name = props.NAME || props.name || props.ADMIN || 'Unknown';
         let iso2 = props.ISO_A2 || props.iso_a2;
+
+        // Filter out invalid ISO codes
+        if (iso2 === "-99" || iso2 === -99) {
+            iso2 = null;
+        }
+
+        // Try Extended Hierarchy variant (used for countries with territories like France)
         if (!iso2) {
-            const iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3 || props.ADM0_A3;
-            iso2 = iso3 ? Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3) : null;
+            iso2 = props.ISO_A2_EH || props.iso_a2_eh;
+            if (iso2 === "-99" || iso2 === -99) {
+                iso2 = null;
+            }
+        }
+
+        if (!iso2) {
+            let iso3 = props.ISO_A3 || props.ISO3 || props.iso_a3;
+            // Try Extended Hierarchy variant for ISO3
+            if (!iso3 || iso3 === "-99" || iso3 === -99) {
+                iso3 = props.ISO_A3_EH || props.iso_a3_eh;
+            }
+            // Try ADM0_A3 as final fallback
+            if (!iso3 || iso3 === "-99" || iso3 === -99) {
+                iso3 = props.ADM0_A3;
+            }
+            // Convert ISO3 to ISO2
+            if (iso3 && iso3 !== "-99" && iso3 !== -99) {
+                iso2 = Object.keys(this.iso2to3).find(key => this.iso2to3[key] === iso3);
+            }
         }
 
         const count = iso2 ? (this.countryData[iso2] || 0) : 0;
+
+        // Debug logging for France
+        if (name === 'France' || name.includes('France')) {
+            console.log('Tooltip for France:');
+            console.log('  - iso2 from GeoJSON:', iso2);
+            console.log('  - countryData keys:', Object.keys(this.countryData));
+            console.log('  - countryData[iso2]:', this.countryData[iso2]);
+            console.log('  - countryData["FR"]:', this.countryData['FR']);
+            console.log('  - Full props:', props);
+        }
 
         // Format tooltip text
         const line1 = name;
@@ -312,7 +371,7 @@ window.slurpMap2D = {
         ctx.fillText(line1, x + padding, y + 20);
 
         ctx.font = '12px Arial';
-        ctx.fillStyle = this.getHeatColor(count);
+        ctx.fillStyle = '#fff';  // Always white for readability
         ctx.fillText(line2, x + padding, y + 38);
     },
 
@@ -328,6 +387,8 @@ window.slurpMap2D = {
 
     updateHeatmap: function (countryData) {
         this.countryData = countryData || {};
+        console.log('Map2D: updateHeatmap called with data:', countryData);
+        console.log('Map2D: FR count:', countryData['FR']);
     },
 
     dispose: function () {
