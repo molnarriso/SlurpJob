@@ -26,17 +26,17 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "2. Stopping Service..." -ForegroundColor Cyan
-plink -batch -i $Key -ssh $User@$ServerIp "sudo systemctl stop slurpjob"
+Write-Host "2. Compressing Files (7-Zip)..." -ForegroundColor Cyan
+# -t7z is default, -mx=1 is fastest compression
+if (Test-Path "deploy.7z") { Remove-Item "deploy.7z" }
+7z a -mx=1 deploy.7z .\publish_arm64\*
 
+Write-Host "4. Uploading Archive & Script..." -ForegroundColor Cyan
+# Upload both the zip and the helper script
+pscp -batch -i $Key deploy.7z server_deploy.sh $User@$ServerIp`:$RemotePath
 
-Write-Host "3. Uploading Files..." -ForegroundColor Cyan
-pscp -batch -i $Key -r publish_arm64/* $User@$ServerIp`:$RemotePath
-
-Write-Host "3b. Downloading GeoIP Database (City)..." -ForegroundColor Cyan
-plink -batch -i $Key -ssh $User@$ServerIp "if [ ! -f $RemotePath/GeoLite2-City.mmdb ]; then sudo curl -L -o $RemotePath/GeoLite2-City.mmdb https://git.io/GeoLite2-City.mmdb; fi"
-
-Write-Host "4. Starting Service..." -ForegroundColor Cyan
-plink -batch -i $Key -ssh $User@$ServerIp "sudo chmod +x $RemotePath/SlurpJob && sudo systemctl start slurpjob"
+Write-Host "5. Executing Remote Deployment..." -ForegroundColor Cyan
+# Execute the helper script
+plink -batch -i $Key -ssh $User@$ServerIp "chmod +x $RemotePath/server_deploy.sh && cd $RemotePath && ./server_deploy.sh"
 
 Write-Host "Deployment Complete!" -ForegroundColor Green

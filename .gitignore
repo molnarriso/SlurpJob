@@ -493,3 +493,7 @@ context_dump.txt
 
 # Deployment Config
 deploy.config.ps1
+
+# Deployment Archives
+deploy.zip
+deploy.7z
