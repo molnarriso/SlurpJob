@@ -32,6 +32,12 @@ NuGet configuration file.
 ## SlurpJob.sln
 The Visual Studio solution file.
 
+## port_table.csv
+The generated, flattened port table (0-65535). Line N corresponds to Port N-1. Contains TCP/UDP flags and optimized descriptions.
+
+## PORT_TABLE_SPECS.md
+Technical specification for `port_table.csv`, including column definitions and processing logic. MUST be read by any agent working on port ingestion or dashboard display.
+
 ---
 
 ## 🚀 Workflows & Best Practices
