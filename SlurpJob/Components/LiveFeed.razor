@@ -14,7 +14,10 @@
                     @* Row 1: Header - Segmented Row Layout *@
                     <div class="segmented-row d-flex w-100 align-items-stretch">
                         <div class="segment timestamp text-secondary">@evt.Timestamp.ToString("HH:mm:ss")</div>
-                        <div class="segment country fw-bold text-warning">[@evt.CountryCode]</div>
+                        <div class="segment country fw-bold text-warning">
+                            <span class="fi fi-@evt.CountryCode.ToLower()" style="margin-right: 6px;"></span>
+                            [@evt.CountryCode]
+                        </div>
                         <div class="segment protocol text-info">@evt.Protocol</div>
                         <div class="segment port-info @(evt.Protocol.ToUpper() == "TCP" ? "tcp" : "udp")">
                             <span class="port-number">Port @evt.TargetPort</span>
@@ -182,7 +185,7 @@
     }
 
     .timestamp { min-width: 75px; color: #888; }
-    .country { min-width: 50px; }
+    .country { min-width: 70px; display: flex; align-items: center; }
     
     .port-info {
         gap: 8px;
