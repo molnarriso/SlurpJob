@@ -33,7 +33,7 @@ NuGet configuration file.
 The Visual Studio solution file.
 
 ## port_table.csv
-The generated, flattened port table (0-65535). Line N corresponds to Port N-1. Contains TCP/UDP flags and optimized descriptions.
+The generated, flattened port table (0-65535). Line N corresponds to Port N-1. Contains TCP/UDP flags and optimized descriptions. Loaded into memory at startup by `PortTableService`.
 
 ## PORT_TABLE_SPECS.md
 Technical specification for `port_table.csv`, including column definitions and processing logic. MUST be read by any agent working on port ingestion or dashboard display.

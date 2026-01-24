@@ -27,4 +27,11 @@
     <ProjectReference Include="..\SlurpJob\SlurpJob.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\port_table.csv">
+      <Link>port_table.csv</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

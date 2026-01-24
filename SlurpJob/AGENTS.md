@@ -21,7 +21,12 @@ Contains data models, DTOs, and enums used throughout the application.
 Contains the core low-level networking logic (Socket listener, Ingestion).
 
 ## Services
-Contains application services (Hosted services, business logic). This includes the `IngestionService` which handles real-time traffic and background reclassification of old payloads on startup.
+This folder contains the application services.
+- `IngestionService.cs`: Background worker for capturing traffic and logging to SQLite.
+- `PortTableService.cs`: Singleton loading `port_table.csv` for real-time segmented UI classification.
+
+## LiveFeed.razor
+The real-time attack stream. Displays incoming connections using a "Segmented Row" layout with protocol-specific coloring (Cyan for TCP, Orange for UDP) and port classification pills.
 
 ## wwwroot
 Contains static web assets (CSS, JavaScript, images, libraries).

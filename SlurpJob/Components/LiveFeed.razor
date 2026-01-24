@@ -1,6 +1,7 @@
 @using SlurpJob.Models
 @using SlurpJob.Services
 @inject IngestionService Ingestion
+@inject PortTableService PortTable
 @inject ILogger<LiveFeed> Logger
 @implements IDisposable
 
@@ -9,20 +10,25 @@
         <div class="list-group list-group-flush">
             @foreach (var evt in _events)
             {
-                <button type="button" class="list-group-item list-group-item-action bg-dark text-light border-secondary py-2" @onclick="() => OnEventClick(evt)">
-                    @* Row 1: Header - All metadata in a compact horizontal layout *@
-                    <div class="d-flex w-100 justify-content-between align-items-center mb-1" style="gap: 8px;">
-                        <small class="text-secondary" style="min-width: 60px;">@evt.Timestamp.ToString("HH:mm:ss")</small>
-                        <span class="fw-bold text-warning" style="min-width: 40px;">[@evt.CountryCode]</span>
-                        <span class="text-muted" style="font-size: 0.75rem;">&rarr;</span>
-                        <span class="text-danger" style="min-width: 70px;">Port @evt.TargetPort</span>
-                        <small class="text-info" style="min-width: 35px;">@evt.Protocol</small>
-                        <small class="text-muted" style="min-width: 40px;">@evt.PayloadProtocol</small>
-                        <small class="text-white-50 text-truncate flex-grow-1" style="min-width: 0;">@evt.ClassifierName</small>
-                        <span class="badge @GetIntentColor(evt.Intent)" style="min-width: 60px;">@evt.Intent</span>
+                <button type="button" class="list-group-item list-group-item-action bg-dark text-light border-secondary p-0" style="border-bottom: 1px solid #222 !important;" @onclick="() => OnEventClick(evt)">
+                    @* Row 1: Header - Segmented Row Layout *@
+                    <div class="segmented-row d-flex w-100 align-items-stretch">
+                        <div class="segment timestamp text-secondary">@evt.Timestamp.ToString("HH:mm:ss")</div>
+                        <div class="segment country fw-bold text-warning">[@evt.CountryCode]</div>
+                        <div class="segment protocol text-info">@evt.Protocol</div>
+                        <div class="segment port-info @(evt.Protocol.ToUpper() == "TCP" ? "tcp" : "udp")">
+                            <span class="port-number">Port @evt.TargetPort</span>
+                            @if (!string.IsNullOrEmpty(evt.PortDescription))
+                            {
+                                <span class="port-desc" title="@evt.FullPortDescription">@Truncate(evt.PortDescription, 64)</span>
+                            }
+                        </div>
+                        <div class="segment payload-proto">@evt.PayloadProtocol</div>
+                        <div class="segment classifier text-truncate flex-grow-1">@evt.ClassifierName</div>
+                        <div class="segment intent-badge @GetIntentColor(evt.Intent)">@evt.Intent</div>
                     </div>
                     @* Row 2: Payload snippet only *@
-                    <div>
+                    <div class="px-2 py-1">
                         <code class="text-warning d-block" style="font-size: 0.85rem; background-color: #2a2a2a; padding: 4px 6px; border-radius: 3px; overflow-x: auto; white-space: nowrap;">@evt.PayloadSnippet</code>
                     </div>
                 </button>
@@ -44,6 +50,8 @@
         public string ClassifierName { get; set; } = "";
         public byte[] PayloadBlob { get; set; } = Array.Empty<byte>();
         public string PayloadSnippet { get; set; } = "";
+        public string? PortDescription { get; set; }
+        public string? FullPortDescription { get; set; }
     }
     
     /// <summary>
@@ -96,7 +104,9 @@
                 TargetPort = incident.TargetPort,
                 ClassifierName = incident.ClassifierName,
                 PayloadBlob = payloadBytes,
-                PayloadSnippet = GetPayloadSnippet(payloadBytes)
+                PayloadSnippet = GetPayloadSnippet(payloadBytes),
+                PortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Short,
+                FullPortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Full
             };
 
             await InvokeAsync(() =>
@@ -137,8 +147,81 @@
         _ => "bg-info text-dark"
     };
 
+    private string Truncate(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        if (text.Length <= maxLength) return text;
+        return text[..maxLength] + "....";
+    }
+
     public void Dispose()
     {
         Ingestion.OnNewIncident -= HandleIncident;
     }
 }
+
+<style>
+    .segmented-row {
+        background-color: #1a1a1a;
+        border-bottom: 1px solid #333;
+        font-family: monospace;
+        font-size: 0.75rem;
+        line-height: normal;
+    }
+
+    .segment {
+        padding: 4px 10px;
+        border-right: 1px solid #333;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .segment:last-child {
+        border-right: none;
+    }
+
+    .timestamp { min-width: 75px; color: #888; }
+    .country { min-width: 50px; }
+    
+    .port-info {
+        gap: 8px;
+        min-width: 120px;
+    }
+    
+    .port-info .port-desc {
+        background: #222;
+        padding: 0 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        border: 1px solid #444;
+        transition: all 0.2s ease;
+    }
+
+    .port-info.tcp .port-number { color: #f00; } /* Keep original red for "Port X"? No, let's use theme */
+    .port-info.tcp .port-desc { color: #0ff; border-color: #0ff; }
+    
+    .port-info.udp .port-number { color: #f00; }
+    .port-info.udp .port-desc { color: #ff9900; border-color: #ff9900; }
+
+    .port-info:hover .port-desc {
+        background-color: #333;
+        transform: translateY(-1px);
+    }
+
+    .protocol { min-width: 45px; color: #00ffff; font-weight: bold; }
+    .payload-proto { min-width: 60px; color: #888; }
+    .classifier { color: #bbb; overflow: hidden; text-overflow: ellipsis; font-size: 0.7rem; }
+    
+    .intent-badge {
+        min-width: 70px;
+        justify-content: center;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 0.65rem;
+    }
+
+    .list-group-item:hover .segmented-row {
+        background-color: #222;
+    }
+</style>

@@ -19,7 +19,8 @@ The application is a single compiled binary (`SlurpJob`) handling three concurre
 
 1.  **Ingestion Engine:** Raw socket management using native System calls.
 2.  **Classification Brain:** A rigid, high-performance logic loop for identifying threats.
-3.  **Visualization Core:** A built-in Blazor Server web application hosting the dashboard.
+3.  **Intelligence Layer:** `PortTableService` providing O(1) in-memory port/service classification from `port_table.csv`.
+4.  **Visualization Core:** A built-in Blazor Server web application hosting the dashboard.
 
 ### Network Interface Strategy
 To monitor privileged ports (80, 443) safely while hosting the dashboard:
@@ -88,9 +89,17 @@ The dashboard utilizes a persistent **SignalR (WebSocket)** connection. New inci
 
 **1. The Live Feed (Left Panel)**
 *   **Behavior:** A strictly chronological, scrolling list of incoming connections.
-*   **Virtualization:** Utilizes UI virtualization to handle thousands of rows without browser lag.
-*   **Content:** Timestamp, Country Flag, Target Port, and a brief ASCII snippet of the payload.
-*   **Silence Indicator:** A subtle status beacon (e.g., "System Active / Awaiting Targets") to confirm the system is operational during quiet periods.
+*   **Segmented Layout:** Each entry is a structured "Command Center" row with metadata segments:
+    *   **Timestamp**: Precise capture time.
+    *   **Country**: IP-based origin flag.
+    *   **Protocol**: TCP (Cyan) or UDP (Orange) indicator.
+    *   **Port**: The targeted service port.
+    *   **Classification**: Real-time service description (e.g., "SSH", "RFB / VNC") from the port table.
+    *   **Classifier**: The internal logic name that identified the packet.
+    *   **Intent**: High-contrast badge indicating threat level (`Exploit`, `Recon`, etc.).
+*   **Virtualization:** Handles thousands of rows without browser lag.
+*   **Content:** Detailed metadata in Row 1, payload hex/ASCII snippet in Row 2.
+*   **Silence Indicator:** A subtle status beacon to confirm the system is operational during quiet periods.
 
 **2. The Tactical Map (Center/Bottom)**
 *   **Visual:** A 2D Vector World Map.

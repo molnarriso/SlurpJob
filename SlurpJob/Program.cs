@@ -26,6 +26,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 // SlurpJob Services
+builder.Services.AddSingleton<SlurpJob.Services.PortTableService>();
 builder.Services.AddSingleton<SlurpJob.Services.IngestionService>();
 builder.Services.AddHostedService(p => p.GetRequiredService<SlurpJob.Services.IngestionService>());
 
