@@ -26,6 +26,7 @@ The project targets **AWS EC2 (Amazon Linux 2023 - ARM64)**.
 ### Prerequisites
 *   **.NET 9 SDK**
 *   **PowerShell 7+** (Required for deployment scripts)
+    *   Install: `winget install Microsoft.PowerShell`
 *   **Putty Utils** (`plink`, `pscp`) on PATH
 *   **7-Zip** (`7z`) on PATH
 
