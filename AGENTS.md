@@ -65,3 +65,5 @@ The deployment script (`./deploy.ps1`) handles the heavy lifting:
 1.  **Tests:** Runs checks. Aborts on failure.
 2.  **Build:** Compiles for Linux ARM64.
 3.  **Deploy:** Stops service -> Uploads binaries -> Restarts service.
+
+
