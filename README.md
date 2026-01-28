@@ -60,6 +60,20 @@ If you need to build manually:
 dotnet publish SlurpJob/SlurpJob.csproj -c Release -r linux-arm64 --self-contained -p:PublishSingleFile=true -o ./publish_arm64
 ```
 
+## 🧪 Testing
+Run the test suite locally:
+```powershell
+dotnet test
+```
+
+### Optional Production Database for Analysis
+The repository includes a `.db` gitignore pattern. If you want to analyze real production data:
+1. Manually copy `slurp.db` from the server using SCP
+2. Place it in the project root
+3. Run `LocalDatabaseTests.cs` to validate classifiers against real attack data
+
+**Note:** The database is **optional**. All standard tests work without it. Tests requiring the production database are automatically skipped if it doesn't exist.
+
 ## 📂 Project Structure
 *   `SlurpJob/`: Main ASP.NET Core / Blazor application.
 *   `SlurpJob.Tests/`: Unit tests.

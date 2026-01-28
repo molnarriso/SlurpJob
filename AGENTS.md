@@ -35,6 +35,15 @@ The Visual Studio solution file.
 ## port_table.csv
 The generated, flattened port table (0-65535). Line N corresponds to Port N-1. Contains TCP/UDP flags and optimized descriptions. Loaded into memory at startup by `PortTableService`.
 
+## slurp.db
+**Optional** local copy of the production database. Contains real attack data and can be used for:
+- Testing classifiers against historical data
+- Analyzing attack patterns
+- Validating database queries
+- Integration testing without affecting production
+
+**Note:** This file is optional and does NOT need to exist for the application or tests to run. It is gitignored and can be manually copied from the server when needed for analysis. The application creates its own empty database at runtime if none exists.
+
 ## PORT_TABLE_SPECS.md
 Technical specification for `port_table.csv`, including column definitions and processing logic. MUST be read by any agent working on port ingestion or dashboard display.
 
