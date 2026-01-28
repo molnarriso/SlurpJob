@@ -497,3 +497,8 @@ deploy.config.ps1
 # Deployment Archives
 deploy.zip
 deploy.7z
+
+# SQLite Database Files (local copies)
+*.db
+*.db-shm
+*.db-wal
