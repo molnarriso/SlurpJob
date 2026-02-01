@@ -88,6 +88,29 @@
     protected override void OnInitialized()
     {
         Logger.LogInformation("LiveFeed: Initializing...");
+        
+        // Load cached recent incidents so the feed isn't empty on load
+        var recentIncidents = Ingestion.GetRecentIncidents();
+        foreach (var incident in recentIncidents.Reverse()) // Most recent first
+        {
+            var payloadBytes = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
+            _events.Add(new LiveEventViewModel
+            {
+                Timestamp = incident.Timestamp,
+                Protocol = incident.Protocol,
+                PayloadProtocol = incident.PayloadProtocol,
+                Intent = incident.Intent,
+                CountryCode = incident.CountryCode,
+                TargetPort = incident.TargetPort,
+                ClassifierName = incident.ClassifierName,
+                PayloadBlob = payloadBytes,
+                PayloadSnippet = GetPayloadSnippet(payloadBytes),
+                PortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Short,
+                FullPortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Full
+            });
+        }
+        
+        Logger.LogInformation($"LiveFeed: Loaded {_events.Count} cached incidents");
         Ingestion.OnNewIncident += HandleIncident;
     }
     

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
@@ -14,6 +15,8 @@ namespace SlurpJob.Services;
 
 public class IngestionService : BackgroundService
 {
+    private const int RecentIncidentsCacheSize = 20;
+    
     private readonly TcpSponge _tcpSponge;
     private readonly UdpSponge _udpSponge;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -22,6 +25,9 @@ public class IngestionService : BackgroundService
     private readonly ILogger<IngestionService> _logger;
     private readonly string _geoDbPath;
     private DatabaseReader? _geoReader;
+    
+    // Cache of recent incidents for immediate display on dashboard load
+    private readonly ConcurrentQueue<IncidentLog> _recentIncidentsCache = new();
     
     public IngestionService(
         IServiceScopeFactory scopeFactory,
@@ -52,9 +58,10 @@ public class IngestionService : BackgroundService
     private DateTime _lastEpsUpdate = DateTime.UtcNow;
     private int _eventsSinceLastUpdate;
 
-    public override Task StartAsync(CancellationToken cancellationToken)
+    public override async Task StartAsync(CancellationToken cancellationToken)
     {
         InitializeGeoIp();
+        await LoadRecentIncidentsCacheAsync(cancellationToken);
         
         _tcpSponge.OnConnectionReceived += async (data) => await HandleConnection(data.SourceIp, data.SourcePort, data.OriginalTargetPort, "TCP", data.Payload, data.Timestamp);
         _udpSponge.OnPacketReceived += async (data) => await HandleConnection(data.SourceIp, data.SourcePort, data.OriginalTargetPort, "UDP", data.Payload, data.Timestamp);
@@ -62,7 +69,43 @@ public class IngestionService : BackgroundService
         // Run reclassification in background after start
         _ = Task.Run(() => ReclassifyUnclassifiedAsync(cancellationToken), cancellationToken);
 
-        return base.StartAsync(cancellationToken);
+        await base.StartAsync(cancellationToken);
+    }
+    
+    /// <summary>
+    /// Returns a snapshot of the most recent incidents for immediate dashboard display.
+    /// </summary>
+    public IReadOnlyList<IncidentLog> GetRecentIncidents()
+    {
+        return _recentIncidentsCache.ToArray();
+    }
+    
+    private async Task LoadRecentIncidentsCacheAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SlurpContext>>();
+            using var db = factory.CreateDbContext();
+            
+            var recentIncidents = await db.IncidentLogs
+                .Include(i => i.Evidence)
+                .OrderByDescending(i => i.Timestamp)
+                .Take(RecentIncidentsCacheSize)
+                .ToListAsync(ct);
+            
+            // Add in chronological order (oldest first) so newest ends up at the end
+            foreach (var incident in recentIncidents.OrderBy(i => i.Timestamp))
+            {
+                _recentIncidentsCache.Enqueue(incident);
+            }
+            
+            _logger.LogInformation($"Loaded {recentIncidents.Count} recent incidents into cache for dashboard.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load recent incidents cache");
+        }
     }
 
     private async Task ReclassifyUnclassifiedAsync(CancellationToken ct)
@@ -237,7 +280,14 @@ public class IngestionService : BackgroundService
         var dto = IncidentDto.FromEntity(incident);
         await _hubContext.Clients.All.SendAsync("ReceiveIncident", dto);
         
-        // 6. Invoke C# Event (For Blazor Server local)
+        // 6. Add to recent cache for new visitors
+        _recentIncidentsCache.Enqueue(incident);
+        while (_recentIncidentsCache.Count > RecentIncidentsCacheSize)
+        {
+            _recentIncidentsCache.TryDequeue(out _);
+        }
+        
+        // 7. Invoke C# Event (For Blazor Server local)
         OnNewIncident?.Invoke(incident);
         
         _logger.LogInformation($"Ingested: {protocol} {sourceIp} -> {targetPort} [{bestName}]");
