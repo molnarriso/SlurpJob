@@ -156,7 +156,6 @@ public static class AttackCatalog
             References = ["https://attack.mitre.org/techniques/T1190/"]
         });
 
-        // === Empty Scan ===
         Register(new AttackInfo
         {
             Id = "port-scan",
@@ -165,6 +164,17 @@ public static class AttackCatalog
             Impact = "Reconnaissance only. The attacker is building a map of your exposed services for future targeted attacks.",
             TechnicalNote = "Port scanning is the first step in almost every attack. Tools like Masscan can scan the entire internet in under an hour.",
             References = ["https://attack.mitre.org/techniques/T1046/"]
+        });
+
+        // === Magellan / RIPE Atlas ===
+        Register(new AttackInfo
+        {
+            Id = "magellan-scanner",
+            Title = "RIPE Atlas / Magellan Internet Measurement",
+            WhatIsIt = "This is a RIPE Atlas measurement probe (codename 'Magellan'). It's a legitimate internet research tool used to measure connectivity and reachability across the global internet.",
+            Impact = "Benign. These probes are part of academic and network research infrastructure. No exploitation intended.",
+            TechnicalNote = "MGLNDD payloads contain the target IP and port being measured. RIPE Atlas is operated by RIPE NCC for internet health monitoring.",
+            References = ["https://atlas.ripe.net/", "https://www.ripe.net/analyse/internet-measurements/ripe-atlas"]
         });
 
         // === Unknown ===
@@ -188,6 +198,7 @@ public static class AttackCatalog
         _protocolFallbacks["JSONRPC"] = _catalog["ethereum-node-probe"];
         _protocolFallbacks["RMI"] = _catalog["java-rmi"];
         _protocolFallbacks["T3"] = _catalog["weblogic-t3"];
+        _protocolFallbacks["Magellan"] = _catalog["magellan-scanner"];
     }
 
     private static void Register(AttackInfo info)

@@ -44,6 +44,7 @@ builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJ
 builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.RedisClassifier>();
 builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.RMIClassifier>();
 builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.T3Classifier>();
+builder.Services.AddSingleton<SlurpJob.Classification.IInboundClassifier, SlurpJob.Classification.MagellanClassifier>();
 
 builder.Services.AddDbContextFactory<SlurpJob.Data.SlurpContext>(options =>
     options.UseSqlite("Data Source=slurp.db"));

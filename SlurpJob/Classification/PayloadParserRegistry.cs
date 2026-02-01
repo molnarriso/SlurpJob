@@ -20,6 +20,7 @@ public static class PayloadParserRegistry
     private static readonly IPayloadParser _log4jParser = new Parsers.Log4JParser();
     private static readonly IPayloadParser _envProbeParser = new Parsers.EnvProbeParser();
     private static readonly IPayloadParser _emptyParser = new Parsers.EmptyParser();
+    private static readonly IPayloadParser _magellanParser = new Parsers.MagellanParser();
 
     static PayloadParserRegistry()
     {
@@ -136,6 +137,10 @@ public static class PayloadParserRegistry
         
         // Empty
         Register("Empty Scan", _emptyParser);
+        
+        // Magellan / RIPE Atlas
+        Register("RIPE Atlas/Magellan Scanner", _magellanParser);
+        Register("Magellan Classifier", _magellanParser);
     }
 
     private static void Register(string classifierName, IPayloadParser parser)

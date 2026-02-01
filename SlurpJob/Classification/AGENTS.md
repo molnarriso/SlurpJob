@@ -59,3 +59,6 @@ Detects Java RMI (Remote Method Invocation) protocol via JRMI magic. Also detect
 
 ## T3Classifier.cs
 Detects Oracle WebLogic T3 protocol. Identifies version-specific probes and CVE payloads (CVE-2019-2725, CVE-2020-14882). Intent: Exploit.
+
+## MagellanClassifier.cs
+Detects MGLNDD (RIPE Atlas/Magellan) internet measurement scanner traffic by checking for "MGLNDD_" prefix. Intent: Recon.

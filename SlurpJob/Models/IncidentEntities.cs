@@ -18,7 +18,8 @@ public enum PayloadProtocol
     JSONRPC = 10,
     Redis = 11,
     RMI = 12,
-    T3 = 13
+    T3 = 13,
+    Magellan = 14
 }
 
 public enum Intent

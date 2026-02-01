@@ -40,3 +40,6 @@ Parses config file probes: target path (.env, .git).
 
 ## EmptyParser.cs
 Handles empty payloads (port scans).
+
+## MagellanParser.cs
+Parses MGLNDD (RIPE Atlas) scanner payloads: target IP, target port.
