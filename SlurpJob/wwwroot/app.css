@@ -301,3 +301,88 @@ article,
     opacity: 0.5 !important;
     filter: grayscale(0.4) !important;
 }
+
+/* 
+ * MOBILE RESPONSIVENESS (Max-Width: 768px)
+ * Stacks layout vertically and enables scrolling
+ */
+@media screen and (max-width: 768px) {
+
+    /* 1. Reset Global Scroll & Size Locks */
+    html,
+    body,
+    .page,
+    main,
+    article,
+    .content {
+        height: auto !important;
+        width: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+        /* Release absolute lock if present */
+    }
+
+    /* 2. Dashboard Container Unlock */
+    .dashboard-container {
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-y: visible !important;
+        position: relative !important;
+        display: block !important;
+        /* Switch from flex column to block for simpler flow */
+    }
+
+    /* 3. Header */
+    .dashboard-header {
+        position: sticky !important;
+        top: 0 !important;
+        width: 100% !important;
+        /* Keep existing flex props */
+    }
+
+    /* 4. Top Section (Map + Timeline) -> Stack Vertically */
+    .dashboard-top {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: none !important;
+        /* Stop trying to be 50% */
+        height: auto !important;
+        border-bottom: none !important;
+    }
+
+    /* 5. Wrappers (Map & Timeline) */
+    .map-wrapper,
+    .timeline-wrapper {
+        flex: none !important;
+        width: 100% !important;
+        height: 350px !important;
+        /* Fixed height for visuals */
+        border-right: none !important;
+        border-bottom: 1px solid #222 !important;
+        position: relative !important;
+        display: block !important;
+    }
+
+    /* 6. Timeline Controls - Reposition for mobile if needed */
+    .timeline-controls {
+        top: 5px !important;
+        right: 5px !important;
+    }
+
+    /* 7. Bottom Section (Live Feed) -> Natural Height */
+    .dashboard-bottom {
+        flex: none !important;
+        height: 600px !important;
+        /* Give it substantial space or let it grow */
+        display: block !important;
+        overflow: visible !important;
+        /* Let inner content determine scroll or height */
+    }
+
+    /* Make Live Feed Card fill the container */
+    .dashboard-bottom .card {
+        height: 100% !important;
+        min-height: 500px !important;
+    }
+}
