@@ -7,7 +7,7 @@
 @if (Show)
 {
     <div class="modal-backdrop fade show" @onclick="Close"></div>
-    <div class="modal fade show d-block" tabindex="-1">
+    <div class="modal fade show d-block" tabindex="-1" @onkeydown="HandleKeyDown" @ref="_modalRef">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content payload-inspector">
                 @* Header *@
@@ -185,6 +185,25 @@
     private ViewMode _currentView = ViewMode.Parsed;
     private AttackInfo _attackInfo = AttackCatalog.Get(null);
     private bool _showExplainer = true;
+    private ElementReference _modalRef;
+    private bool _shouldFocus = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldFocus && Show)
+        {
+            _shouldFocus = false;
+            await _modalRef.FocusAsync();
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Close();
+        }
+    }
 
     public void Open(IncidentLog incident)
     {
@@ -208,6 +227,7 @@
         _currentView = _parsedPayload != null ? ViewMode.Parsed : ViewMode.Hex;
         
         Show = true;
+        _shouldFocus = true;
         StateHasChanged();
     }
 
