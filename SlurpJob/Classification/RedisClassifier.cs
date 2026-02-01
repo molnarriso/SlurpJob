@@ -59,6 +59,7 @@ public class RedisClassifier : IInboundClassifier
             {
                 return new ClassificationResult
                 {
+                    Id = "redis-exploitation",
                     Name = description,
                     Protocol = PayloadProtocol.Redis,
                     Intent = intent
@@ -69,6 +70,7 @@ public class RedisClassifier : IInboundClassifier
         // Generic RESP detected
         return new ClassificationResult
         {
+            Id = "redis-exploitation",
             Name = "Redis RESP Command",
             Protocol = PayloadProtocol.Redis,
             Intent = Intent.Exploit

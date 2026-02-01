@@ -21,6 +21,7 @@ public class HTTPClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
+                Id = "http-scanning",
                 Name = "HTTP Request", 
                 Protocol = PayloadProtocol.HTTP 
             };

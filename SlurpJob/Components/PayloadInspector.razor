@@ -1,25 +1,169 @@
 @using SlurpJob.Models
+@using SlurpJob.Classification
+@using SlurpJob.Services
+@inject PortTableService PortTable
+@inject IJSRuntime JS
 
 @if (Show)
 {
-    <div class="modal-backdrop fade show"></div>
-    <div class="modal fade show d-block" tabindex="-1" style="display: block;">
+    <div class="modal-backdrop fade show" @onclick="Close"></div>
+    <div class="modal fade show d-block" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title">Payload Inspector</h5>
+            <div class="modal-content payload-inspector">
+                @* Header *@
+                <div class="modal-header payload-inspector-header">
+                    <h5 class="modal-title">
+                        <span class="inspector-icon">🔍</span> Payload Inspector
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
                 </div>
-                <div class="modal-body font-monospace">
-                    <div class="row">
-                        <div class="col-md-6 border-end border-secondary">
-                            <h6 class="text-light border-bottom border-secondary pb-2">Hex Dump</h6>
-                            <pre class="text-info" style="white-space: pre-wrap;">@HexDump</pre>
+
+                @* Metadata Bar *@
+                @if (_incident != null)
+                {
+                    <div class="payload-inspector-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Time</span>
+                            <span class="meta-value">@_incident.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</span>
                         </div>
-                        <div class="col-md-6">
-                            <h6 class="text-light border-bottom border-secondary pb-2">ASCII Representation</h6>
-                            <pre class="text-success" style="white-space: pre-wrap;">@AsciiDump</pre>
+                        <div class="meta-item">
+                            <span class="meta-label">Source</span>
+                            <span class="meta-value">@_incident.SourceIp</span>
                         </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Country</span>
+                            <span class="meta-value">
+                                <span class="fi fi-@_incident.CountryCode.ToLower()" style="margin-right: 4px;"></span>
+                                @_incident.CountryCode
+                            </span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Protocol</span>
+                            <span class="meta-value protocol-badge @(_incident.Protocol.ToUpper() == "TCP" ? "tcp" : "udp")">@_incident.Protocol</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Port</span>
+                            <span class="meta-value">@_incident.TargetPort @(string.IsNullOrEmpty(_portDesc) ? "" : $"({_portDesc})")</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Classifier</span>
+                            <span class="meta-value classifier-name">@_incident.ClassifierName</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Intent</span>
+                            <span class="intent-badge @GetIntentColor(_incident.Intent)">@_incident.Intent</span>
+                        </div>
+                    </div>
+
+                    @* Attack Explainer Panel *@
+                    <div class="attack-explainer">
+                        <div class="explainer-header" @onclick="ToggleExplainer">
+                            <span class="explainer-icon">📚</span>
+                            <span class="explainer-title">@_attackInfo.Title</span>
+                            <span class="explainer-toggle">@(_showExplainer ? "▼" : "▶")</span>
+                        </div>
+                        @if (_showExplainer)
+                        {
+                            <div class="explainer-content">
+                                <div class="explainer-section">
+                                    <div class="explainer-label">What is this?</div>
+                                    <div class="explainer-text">@_attackInfo.WhatIsIt</div>
+                                </div>
+                                <div class="explainer-section">
+                                    <div class="explainer-label">What would happen if successful?</div>
+                                    <div class="explainer-text">@_attackInfo.Impact</div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_attackInfo.TechnicalNote))
+                                {
+                                    <div class="explainer-section">
+                                        <div class="explainer-label">Technical Note</div>
+                                        <div class="explainer-text tech-note">@_attackInfo.TechnicalNote</div>
+                                    </div>
+                                }
+                                @if (_attackInfo.References.Length > 0)
+                                {
+                                    <div class="explainer-links">
+                                        @foreach (var link in _attackInfo.References)
+                                        {
+                                            <a href="@link" target="_blank" rel="noopener noreferrer" class="explainer-link">🔗 @GetLinkLabel(link)</a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* View Tabs *@
+                <div class="payload-inspector-tabs">
+                    <button class="tab-btn @(_currentView == ViewMode.Parsed ? "active" : "")" @onclick="() => SetView(ViewMode.Parsed)" disabled="@(_parsedPayload == null)">
+                        Parsed
+                    </button>
+                    <button class="tab-btn @(_currentView == ViewMode.Hex ? "active" : "")" @onclick="() => SetView(ViewMode.Hex)">
+                        Hex
+                    </button>
+                    <button class="tab-btn @(_currentView == ViewMode.Ascii ? "active" : "")" @onclick="() => SetView(ViewMode.Ascii)">
+                        ASCII
+                    </button>
+                    
+                    <div class="tab-actions">
+                        <button class="action-btn" @onclick="CopyHex" title="Copy Hex">📋 Hex</button>
+                        <button class="action-btn" @onclick="CopyAscii" title="Copy ASCII">📋 ASCII</button>
+                        <button class="action-btn" @onclick="CopyBase64" title="Copy Base64">📋 B64</button>
+                        <button class="action-btn" @onclick="DownloadPayload" title="Download">⬇️</button>
+                    </div>
+                </div>
+
+                @* Content *@
+                <div class="modal-body payload-inspector-body">
+                    @if (_currentView == ViewMode.Parsed && _parsedPayload != null)
+                    {
+                        <div class="parsed-view">
+                            <table class="parsed-table">
+                                @foreach (var (label, value) in _parsedPayload.Fields)
+                                {
+                                    <tr>
+                                        <td class="parsed-label">@label</td>
+                                        <td class="parsed-value">@value</td>
+                                    </tr>
+                                }
+                            </table>
+                            @if (!string.IsNullOrEmpty(_parsedPayload.FormattedBody))
+                            {
+                                <div class="parsed-body-section">
+                                    <div class="parsed-body-label">Body / Headers</div>
+                                    <pre class="parsed-body">@_parsedPayload.FormattedBody</pre>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (_currentView == ViewMode.Hex)
+                    {
+                        <div class="hex-view">
+                            <pre class="hex-dump">@_formattedHex</pre>
+                        </div>
+                    }
+                    else if (_currentView == ViewMode.Ascii)
+                    {
+                        <div class="ascii-view">
+                            <pre class="ascii-dump">@_asciiDump</pre>
+                        </div>
+                    }
+                    else if (_parsedPayload == null && _currentView == ViewMode.Parsed)
+                    {
+                        @* No parser available, show hex by default *@
+                        <div class="hex-view">
+                            <pre class="hex-dump">@_formattedHex</pre>
+                        </div>
+                    }
+
+                    @* Stats Bar *@
+                    <div class="payload-stats">
+                        <span class="stat">Size: @_payloadBytes.Length bytes</span>
+                        @if (_payloadBytes.Length > 0)
+                        {
+                            <span class="stat">First bytes: @GetMagicBytes()</span>
+                        }
                     </div>
                 </div>
             </div>
@@ -28,22 +172,41 @@
 }
 
 @code {
+    public enum ViewMode { Parsed, Hex, Ascii }
+    
     public bool Show { get; private set; }
-    public string HexDump { get; private set; } = "";
-    public string AsciiDump { get; private set; } = "";
+    
+    private IncidentLog? _incident;
+    private byte[] _payloadBytes = Array.Empty<byte>();
+    private string _formattedHex = "";
+    private string _asciiDump = "";
+    private string _portDesc = "";
+    private ParsedPayload? _parsedPayload;
+    private ViewMode _currentView = ViewMode.Parsed;
+    private AttackInfo _attackInfo = AttackCatalog.Get(null);
+    private bool _showExplainer = true;
 
-    public void Open(byte[] payload)
+    public void Open(IncidentLog incident)
     {
-        if (payload == null || payload.Length == 0)
-        {
-            HexDump = "<empty>";
-            AsciiDump = "<empty>";
-        }
-        else
-        {
-            HexDump = BitConverter.ToString(payload).Replace("-", " ");
-            AsciiDump = FormatAscii(payload);
-        }
+        _incident = incident;
+        _payloadBytes = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
+        _portDesc = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Short ?? "";
+        
+        // Format hex with offsets (xxd style)
+        _formattedHex = FormatHexDump(_payloadBytes);
+        _asciiDump = FormatAscii(_payloadBytes);
+        
+        // Try to parse with protocol-specific parser
+        var parser = PayloadParserRegistry.GetParser(incident.ClassifierName);
+        _parsedPayload = parser?.Parse(_payloadBytes);
+        
+        // Get attack info for explainer
+        _attackInfo = AttackCatalog.Get(incident.ClassifierId, incident.PayloadProtocol);
+        _showExplainer = true;
+        
+        // Default view: Parsed if available, else Hex
+        _currentView = _parsedPayload != null ? ViewMode.Parsed : ViewMode.Hex;
+        
         Show = true;
         StateHasChanged();
     }
@@ -54,16 +217,119 @@
         StateHasChanged();
     }
 
+    private void SetView(ViewMode mode)
+    {
+        _currentView = mode;
+    }
+
+    private void ToggleExplainer()
+    {
+        _showExplainer = !_showExplainer;
+    }
+
+    private string GetLinkLabel(string url)
+    {
+        if (url.Contains("nvd.nist.gov")) return "CVE Details";
+        if (url.Contains("attack.mitre.org")) return "MITRE ATT&CK";
+        if (url.Contains("github.com")) return "GitHub";
+        if (url.Contains("ethereum.org")) return "Ethereum Docs";
+        return "Reference";
+    }
+
+    private string FormatHexDump(byte[] data)
+    {
+        if (data.Length == 0) return "<empty>";
+        
+        var sb = new System.Text.StringBuilder();
+        
+        for (int i = 0; i < data.Length; i += 16)
+        {
+            // Offset
+            sb.Append($"{i:X8}  ");
+            
+            // Hex bytes (two groups of 8)
+            for (int j = 0; j < 16; j++)
+            {
+                if (j == 8) sb.Append(' ');
+                if (i + j < data.Length)
+                    sb.Append($"{data[i + j]:X2} ");
+                else
+                    sb.Append("   ");
+            }
+            
+            sb.Append(" |");
+            
+            // ASCII
+            for (int j = 0; j < 16 && i + j < data.Length; j++)
+            {
+                byte b = data[i + j];
+                sb.Append(b >= 32 && b <= 126 ? (char)b : '.');
+            }
+            
+            sb.Append("|\n");
+        }
+        
+        return sb.ToString().TrimEnd();
+    }
+
     private string FormatAscii(byte[] data)
     {
+        if (data.Length == 0) return "<empty>";
+        
         var sb = new System.Text.StringBuilder();
         foreach (var b in data)
         {
             if (b >= 32 && b <= 126)
                 sb.Append((char)b);
+            else if (b == '\n')
+                sb.Append('\n');
+            else if (b == '\r')
+                continue; // Skip CR
+            else if (b == '\t')
+                sb.Append("    "); // Tab as spaces
             else
                 sb.Append('.');
         }
         return sb.ToString();
+    }
+
+    private string GetIntentColor(string intent) => intent switch
+    {
+        "Exploit" => "intent-exploit",
+        "Recon" => "intent-recon",
+        "Benign" => "intent-benign",
+        _ => "intent-unknown"
+    };
+
+    private string GetMagicBytes()
+    {
+        if (_payloadBytes.Length == 0) return "N/A";
+        int len = Math.Min(8, _payloadBytes.Length);
+        return BitConverter.ToString(_payloadBytes, 0, len).Replace("-", " ");
+    }
+
+    private async Task CopyHex()
+    {
+        var hex = BitConverter.ToString(_payloadBytes).Replace("-", " ");
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", hex);
+    }
+
+    private async Task CopyAscii()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _asciiDump);
+    }
+
+    private async Task CopyBase64()
+    {
+        var b64 = Convert.ToBase64String(_payloadBytes);
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", b64);
+    }
+
+    private async Task DownloadPayload()
+    {
+        var b64 = Convert.ToBase64String(_payloadBytes);
+        var fileName = $"payload_{_incident?.Id ?? 0}.bin";
+        await JS.InvokeVoidAsync("eval", 
+            $"(function(){{var a=document.createElement('a');a.href='data:application/octet-stream;base64,{b64}';a.download='{fileName}';a.click();}})()");
     }
 }

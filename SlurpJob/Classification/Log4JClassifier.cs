@@ -21,6 +21,7 @@ public class Log4JClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
+                Id = "log4shell",
                 Name = "Log4J Probe", 
                 Intent = Intent.Exploit 
             };

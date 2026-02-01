@@ -15,6 +15,7 @@ public class EmptyScanClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
+                Id = "port-scan",
                 Name = "Empty Scan", 
                 Intent = Intent.Recon 
             };

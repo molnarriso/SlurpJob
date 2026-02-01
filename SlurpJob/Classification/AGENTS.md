@@ -4,7 +4,22 @@ This folder contains classes responsible for analyzing and classifying incoming 
 These classifiers are consumed by `SlurpJob.Services.IngestionService` which aggregates their results to produce a final `IncidentLog`.
 
 ## IInboundClassifier.cs
-Interface defining the contract for all classifier implementations. Returns `ClassificationResult` with Protocol, Intent, and Name.
+Interface defining the contract for all classifier implementations. Returns `ClassificationResult` with Id, Name, Protocol, and Intent.
+
+## IPayloadParser.cs
+Interface for protocol-specific payload parsers used by PayloadInspector. Parsers extract structured fields from raw payloads.
+
+## PayloadParserRegistry.cs
+Static registry mapping classifier names to parser implementations. Used by PayloadInspector to find the right parser.
+
+## AttackInfo.cs
+Model for educational attack information including Title, WhatIsIt, Impact, TechnicalNote, and References (CVE links, MITRE ATT&CK).
+
+## AttackCatalog.cs
+Static catalog of 15+ attack descriptions keyed by classifier Id. Provides fallback to protocol-level descriptions. Used by PayloadInspector to display educational content.
+
+## Parsers/
+Folder containing 13 protocol-specific parsers (HTTPParser, SIPParser, JSONRPCParser, RedisParser, SSHParser, SSDPParser, TLSParser, RDPParser, RMIParser, T3Parser, Log4JParser, EnvProbeParser, EmptyParser).
 
 ## HTTPClassifier.cs
 Detects HTTP protocol by checking for standard HTTP verbs (GET, POST, etc.) at payload start.
@@ -23,6 +38,9 @@ Classifies empty payloads as reconnaissance scans.
 
 ## SSDPClassifier.cs
 Detects SSDP (Simple Service Discovery Protocol) traffic (M-SEARCH and NOTIFY) used for UPnP discovery.
+
+## SIPClassifier.cs
+Detects SIP (Session Initiation Protocol) for VoIP enumeration.
 
 ## TLSClassifier.cs
 Detects TLS ClientHello handshakes by checking for 0x1603 prefix. Identifies TLS version (1.0/1.1/1.2/1.3). Intent: Recon.

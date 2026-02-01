@@ -51,6 +51,7 @@ public class RMIClassifier : IInboundClassifier
 
             return new ClassificationResult
             {
+                Id = "java-rmi",
                 Name = attackType,
                 Protocol = PayloadProtocol.RMI,
                 Intent = Intent.Exploit
@@ -77,6 +78,7 @@ public class RMIClassifier : IInboundClassifier
 
             return new ClassificationResult
             {
+                Id = "java-rmi",
                 Name = attackType,
                 Protocol = PayloadProtocol.RMI,
                 Intent = Intent.Exploit

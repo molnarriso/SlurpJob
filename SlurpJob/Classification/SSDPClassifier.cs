@@ -20,6 +20,7 @@ public class SSDPClassifier : IInboundClassifier
         {
             return new ClassificationResult
             {
+                Id = "ssdp-discovery",
                 Name = "SSDP Search",
                 Protocol = PayloadProtocol.SSDP,
                 Intent = Intent.Recon
@@ -30,6 +31,7 @@ public class SSDPClassifier : IInboundClassifier
         {
             return new ClassificationResult
             {
+                Id = "ssdp-discovery",
                 Name = "SSDP Notify",
                 Protocol = PayloadProtocol.SSDP,
                 Intent = Intent.Recon

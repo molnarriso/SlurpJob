@@ -5,9 +5,10 @@
 **Core Philosophy:** "The Sponge" – Absorb, Classify, Log, **Visualize**.
 
 ## 1. High-Level Mission
-**SlurpJob** is an integrated Network Intelligence System. Its mission is two-fold:
+**SlurpJob** is an integrated Network Intelligence System. Its mission is three-fold:
 1.  **The Sponge:** To silently accept unsolicited traffic on all 65,535 TCP/UDP ports, capturing payloads with high fidelity without exposing vulnerabilities.
-2.  **The Dashboard:** To provide the maintainer with a "Command Center" view of the internet's background radiation. It transforms raw binary streams into a living, visual narrative, allowing the maintainer to instantly distinguish between routine scans and novel attack vectors over varying timelines.
+2.  **The Dashboard:** To provide a "Command Center" view of the internet's background radiation. It transforms raw binary streams into a living, visual narrative, allowing users to instantly distinguish between routine scans and novel attack vectors over varying timelines.
+3.  **The Educator:** To explain what each attack is attempting to do. Every classified incident links to an explanation that helps visitors—security enthusiasts, students, and curious developers—understand the nature of automated internet threats.
 
 **Key Constraints:**
 *   **No Replies:** The system completes TCP handshakes to allow data flow but sends **zero** application-layer data back.

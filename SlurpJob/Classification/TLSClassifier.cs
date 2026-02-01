@@ -40,6 +40,7 @@ public class TLSClassifier : IInboundClassifier
 
             return new ClassificationResult
             {
+                Id = "tls-scanning",
                 Name = $"{version} {handshakeType}",
                 Protocol = PayloadProtocol.TLS,
                 Intent = Intent.Recon

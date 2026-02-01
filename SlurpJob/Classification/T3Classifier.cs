@@ -69,6 +69,7 @@ public class T3Classifier : IInboundClassifier
 
         return new ClassificationResult
         {
+            Id = "weblogic-t3",
             Name = attackType,
             Protocol = PayloadProtocol.T3,
             Intent = Intent.Exploit

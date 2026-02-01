@@ -166,8 +166,7 @@
     private void ShowPayload(IncidentLog incident)
     {
         if (incident == null) return;
-        var payload = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
-        _payloadInspector.Open(payload);
+        _payloadInspector.Open(incident);
     }
 
     private async Task LoadHistoricalCountryCounts()

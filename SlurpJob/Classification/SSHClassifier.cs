@@ -19,6 +19,7 @@ public class SSHClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
+                Id = "ssh-scanning",
                 Name = "SSH Banner", 
                 Protocol = PayloadProtocol.SSH,
                 Intent = Intent.Recon

@@ -22,6 +22,7 @@ public class EnvProbeClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
+                Id = "config-probe",
                 Name = "Env File Probe", 
                 Intent = Intent.Recon 
             };

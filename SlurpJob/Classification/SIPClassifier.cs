@@ -36,6 +36,7 @@ public class SIPClassifier : IInboundClassifier
                     {
                          return new ClassificationResult 
                         { 
+                            Id = "sip-scanning",
                             Name = "SIP Request", 
                             Protocol = PayloadProtocol.SIP,
                             Intent = Intent.Recon // Default to Recon, but could be Exploit for flooding

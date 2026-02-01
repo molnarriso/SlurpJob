@@ -61,8 +61,12 @@ public class JSONRPCClassifier : IInboundClassifier
                     _ => Intent.Recon
                 };
 
+                // Wallet drain attacks get specific Id
+                string attackId = intent == Intent.Exploit ? "ethereum-wallet-drain" : "ethereum-node-probe";
+
                 return new ClassificationResult
                 {
+                    Id = attackId,
                     Name = description,
                     Protocol = PayloadProtocol.JSONRPC,
                     Intent = intent
@@ -73,6 +77,7 @@ public class JSONRPCClassifier : IInboundClassifier
         // Generic JSON-RPC detected but no specific method identified
         return new ClassificationResult
         {
+            Id = "ethereum-node-probe",
             Name = "JSON-RPC Request",
             Protocol = PayloadProtocol.JSONRPC,
             Intent = Intent.Recon

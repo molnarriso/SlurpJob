@@ -46,6 +46,11 @@ public class IncidentLog
     public string PayloadProtocol { get; set; } = "Unknown"; // HTTP, SSH, etc.
     public string Intent { get; set; } = "Unknown"; // Recon, Exploit, etc.
     
+    /// <summary>
+    /// Stable identifier for attack catalog lookup (e.g., "rdp-bluekeep")
+    /// </summary>
+    public string ClassifierId { get; set; } = "unknown";
+    
     public string ClassifierName { get; set; } = "Unclassified";
     
     // Navigation

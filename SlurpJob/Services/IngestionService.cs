@@ -69,27 +69,22 @@ public class IngestionService : BackgroundService
     {
         try
         {
-            _logger.LogInformation("Starting background reclassification of 'Unclassified' entries...");
+            _logger.LogInformation("Starting background reclassification of all incidents...");
 
             using var scope = _scopeFactory.CreateScope();
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SlurpContext>>();
             using var db = factory.CreateDbContext();
 
-            var unclassified = await db.IncidentLogs
+            // Get all incidents with evidence
+            var allIncidents = await db.IncidentLogs
                 .Include(i => i.Evidence)
-                .Where(i => i.ClassifierName == "Unclassified")
+                .Where(i => i.Evidence != null)
                 .ToListAsync(ct);
 
-            if (unclassified.Count == 0)
-            {
-                _logger.LogInformation("No 'Unclassified' entries found for reclassification.");
-                return;
-            }
-
-            _logger.LogInformation($"Found {unclassified.Count} 'Unclassified' entries. Re-running classifiers...");
+            _logger.LogInformation($"Processing {allIncidents.Count} incidents...");
 
             int updatedCount = 0;
-            foreach (var incident in unclassified)
+            foreach (var incident in allIncidents)
             {
                 if (ct.IsCancellationRequested) break;
                 if (incident.Evidence == null) continue;
@@ -104,11 +99,16 @@ public class IngestionService : BackgroundService
                 var bestName = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Name 
                                ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Name
                                ?? "Unclassified";
+                var bestId = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Id 
+                             ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Id
+                             ?? "unknown";
 
-                if (bestName != "Unclassified")
+                // Update if anything changed
+                if (incident.ClassifierName != bestName || incident.ClassifierId != bestId)
                 {
                     incident.PayloadProtocol = bestProtocol.ToString();
                     incident.Intent = bestIntent.ToString();
+                    incident.ClassifierId = bestId;
                     incident.ClassifierName = bestName;
                     updatedCount++;
                 }
@@ -117,11 +117,11 @@ public class IngestionService : BackgroundService
             if (updatedCount > 0)
             {
                 await db.SaveChangesAsync(ct);
-                _logger.LogInformation($"Successfully reclassified {updatedCount} incidents.");
+                _logger.LogInformation($"Updated {updatedCount} incidents.");
             }
             else
             {
-                _logger.LogInformation("Finished reclassification. No items were updated.");
+                _logger.LogInformation("All incidents already up to date.");
             }
         }
         catch (OperationCanceledException)
@@ -202,6 +202,9 @@ public class IngestionService : BackgroundService
         var bestName = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Name 
                        ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Name
                        ?? "Unclassified";
+        var bestId = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Id 
+                     ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Id
+                     ?? "unknown";
         
         // 3. Create Incident
         var incident = new IncidentLog
@@ -213,6 +216,7 @@ public class IngestionService : BackgroundService
             Protocol = protocol,
             PayloadProtocol = bestProtocol.ToString(),
             Intent = bestIntent.ToString(),
+            ClassifierId = bestId,
             ClassifierName = bestName,
             Evidence = new EvidenceLocker
             {

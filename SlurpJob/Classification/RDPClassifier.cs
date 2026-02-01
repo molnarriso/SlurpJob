@@ -25,6 +25,7 @@ public class RDPClassifier : IInboundClassifier
             // TPDU type is at (4 + 1 + length_indicator_position)
             
             string attackType = "TPKT/X.224 Probe";
+            string attackId = "rdp-scanning";
             
             if (payload.Length >= 11)
             {
@@ -45,6 +46,7 @@ public class RDPClassifier : IInboundClassifier
                         {
                             // mstshash is commonly used in BlueKeep (CVE-2019-0708) exploits
                             attackType = "RDP BlueKeep Probe (CVE-2019-0708)";
+                            attackId = "rdp-bluekeep";
                         }
                         else if (text.Contains("Cookie:", StringComparison.OrdinalIgnoreCase))
                         {
@@ -64,6 +66,7 @@ public class RDPClassifier : IInboundClassifier
 
             return new ClassificationResult
             {
+                Id = attackId,
                 Name = attackType,
                 Protocol = PayloadProtocol.RDP,
                 Intent = Intent.Exploit
