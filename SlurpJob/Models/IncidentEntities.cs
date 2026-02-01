@@ -13,7 +13,12 @@ public enum PayloadProtocol
     DNS = 5,
     TLS = 6,
     SIP = 7,
-    SSDP = 8
+    SSDP = 8,
+    RDP = 9,
+    JSONRPC = 10,
+    Redis = 11,
+    RMI = 12,
+    T3 = 13
 }
 
 public enum Intent

@@ -22,7 +22,25 @@ Unit tests for the SIP protocol classifier.
 Unit tests for the SSDP/UPnP protocol classifier.
 
 ## LocalDatabaseTests.cs
-Integration tests using the local `slurp.db` production database copy to validate classifiers against real attack data. **These tests are automatically skipped if `slurp.db` doesn't exist.**
+Integration tests using the local `slurp.db` production database copy to validate classifiers against real attack data. **These tests are automatically skipped if `slurp.db` doesn't exist.** Includes reparsing tests that verify TLS, RDP, and JSON-RPC classifiers hit expected ranges.
+
+## TLSClassifierTests.cs
+Unit tests for the TLS ClientHello classifier.
+
+## RDPClassifierTests.cs
+Unit tests for the RDP/X.224/BlueKeep classifier.
+
+## JSONRPCClassifierTests.cs
+Unit tests for the JSON-RPC/Ethereum classifier.
+
+## RedisClassifierTests.cs
+Unit tests for the Redis RESP classifier.
+
+## RMIClassifierTests.cs
+Unit tests for the Java RMI classifier.
+
+## T3ClassifierTests.cs
+Unit tests for the WebLogic T3 classifier.
 
 ## UnitTest1.cs
 Default unit test file (may be empty or placeholder).

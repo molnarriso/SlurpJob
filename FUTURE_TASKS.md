@@ -11,27 +11,79 @@ Antarctica is too large, Europe too small.
 
 ## Classifier Improvements
 
-### VNC Classifier
-- Detect RFB protocol handshake (`RFB 003.008`, `RFB 003.003`, `RFB 003.007`)
-- Set `PayloadProtocol = VNC`
-- Set `Intent = Exploit` (vulnerable remote desktop targeting)
-- Create `VNCClassifier.cs` implementing `IInboundClassifier`
-- Add unit tests with real VNC handshake payloads
+> **Analysis Date:** 2026-02-01 | **DB Size:** 150,962 incidents | **Unclassified:** 86,129 (57%)
 
-### HTTP Path Classifiers
-Expand existing `HTTPClassifier` or create specialized classifiers:
-- **Admin Panel Probe:** `/admin`, `/wp-admin`, `/phpmyadmin`, `/cpanel`
-- **Path Traversal:** `/../`, `..\\`, `%2e%2e`, URL-encoded variants
-- **Web Shell Upload:** `/shell.php`, `/c99.php`, `/r57.php`, `/cmd.asp`
-- **Config File Probe:** Expand `EnvFileProbe` to include `/.git/config`, `/web.config`, `/config.php`
-- Set appropriate `Intent` values (Exploit vs Recon)
-- Use local `slurp.db` to validate against real HTTP attack data
+### Priority 1: TLS ClientHello (~15,579 hits)
+- **Signature:** `0x1603` prefix (TLS record layer)
+- **Detection:** First 2 bytes = `16 03` (Content Type: Handshake, Version: TLS)
+- **Variants:** `0x160301` (TLS 1.0), `0x160303` (TLS 1.2)
+- **Intent:** Recon (service probing for HTTPS/encrypted services)
+- **Protocol:** TLS
 
-### SIP Sub-Classification
-Enhance existing `SIPClassifier` to distinguish SIP methods:
-- `INVITE` → "SIP Hijacking Attempt" (Intent: Exploit)
-- `REGISTER` → "SIP Account Enumeration" (Intent: Recon)
-- `OPTIONS` → "SIP Service Discovery" (Intent: Recon)
-- `ACK`, `BYE`, `CANCEL` → Additional method tracking
-- Return more specific `ClassifierName` based on SIP method
-- Add unit tests for each SIP method variant
+### Priority 2: RDP/X.224 (~13,268 hits)
+- **Signature:** `0x0300` prefix (X.224 Connection Request)
+- **Detection:** First 2 bytes = `03 00` (TPKT version 3)
+- **Intent:** Exploit (BlueKeep CVE-2019-0708, RDP brute-force)
+- **Protocol:** RDP
+- **Common ports:** 3389, but seen on many ports
+
+### Priority 3: JSON-RPC/Ethereum (~1,482 hits)
+- **Signature:** `{"id":` (ASCII: `7B226964223A`)
+- **Detection:** Starts with `{"id":1,` or similar JSON-RPC structure
+- **Intent:** Recon (Ethereum node discovery, API scanning)
+- **Protocol:** JSONRPC
+- **Sub-patterns:** eth_blockNumber, eth_getBalance, web3_clientVersion
+
+### Priority 4: Redis RESP (~904 hits)
+- **Signature:** `*1\r\n$4\r\n` (RESP array)
+- **Detection:** Starts with `*` followed by RESP protocol commands
+- **Common commands:** `INFO`, `PING`, `CONFIG GET`
+- **Intent:** Exploit (unauthenticated Redis access)
+- **Protocol:** Redis
+
+### Priority 5: Java RMI (~866 hits)
+- **Signature:** `JRMI` (ASCII: `4A524D49`)
+- **Detection:** First 4 bytes = `JRMI`
+- **Intent:** Exploit (Java deserialization, CVE-2017-3241)
+- **Protocol:** RMI
+
+### Priority 6: WebLogic T3 (~752 hits)
+- **Signature:** `t3 12.` (ASCII text handshake)
+- **Detection:** Starts with `t3 ` followed by version
+- **Intent:** Exploit (CVE-2020-14882, CVE-2019-2725, CVE-2017-10271)
+- **Protocol:** T3
+- **High severity:** Known RCE vectors
+
+### Priority 7: SMB (~880 hits)
+- **Signature:** `0x000000..FF534D42` (SMB header with null bytes)
+- **Detection:** Contains `\xFF SMB` magic
+- **Intent:** Exploit (EternalBlue MS17-010, SMB enumeration)
+- **Protocol:** SMB
+
+### Priority 8: AMQP (~749 hits)
+- **Signature:** `AMQP` (ASCII: `414D5150`)
+- **Detection:** First 4 bytes = `AMQP`
+- **Intent:** Recon (RabbitMQ/message queue discovery)
+- **Protocol:** AMQP
+
+### Priority 9: CORBA/IIOP (~858 hits)
+- **Signature:** `GIOP` (ASCII: `47494F50`)
+- **Detection:** First 4 bytes = `GIOP`
+- **Intent:** Recon (CORBA service discovery)
+- **Protocol:** GIOP
+
+### Priority 10: Bitcoin P2P (~753 hits)
+- **Signature:** `0xF9BEB4D9` (mainnet magic)
+- **Detection:** First 4 bytes = Bitcoin magic bytes
+- **Intent:** Recon (cryptocurrency node discovery)
+- **Protocol:** Bitcoin
+
+### Lower Priority
+
+| Protocol | Hits | Signature | Notes |
+|----------|------|-----------|-------|
+| HTTP/2 | ~747 | `PRI * HTTP/2.0` | HTTP/2 connection preface |
+| Telnet HELP | ~895 | `HELP\r\n` | Generic banner grab |
+| MGLNDD Scanner | ~1,329 | `MGLNDD_` | Scanning tool fingerprint |
+| TNMP | ~871 | `TNMP` | Unknown protocol |
+| DmdT | ~863 | `DmdT` | Unknown scanner |
