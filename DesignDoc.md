@@ -26,7 +26,7 @@ The application is a single compiled binary (`SlurpJob`) handling three concurre
 To monitor privileged ports (80, 443) safely while hosting the dashboard:
 *   **Public Interface (0.0.0.0):** OS-level redirection funnels all external traffic (Ports 1–65535) into the Ingestion Engine.
 *   **Local Interface (127.0.0.1):** The Dashboard binds strictly to localhost.
-*   **Tunneling:** A Cloudflare Tunnel connects `dashboard.slurpjob.com` directly to the Local Interface, keeping the management UI isolated from the "Sponge" ports.
+*   **Tunneling:** A Cloudflare Tunnel connects `slurpjob.com` directly to the Local Interface, keeping the management UI isolated from the "Sponge" ports.
 
 ## 3. Ingestion Pipeline
 This logic executes for every incoming connection stream.

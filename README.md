@@ -9,7 +9,8 @@ SlurpJob is a high-performance **network listener and analyzer** designed to sil
 ## 🌍 Current Infrastructure
 *   **Hosting:** AWS EC2 (t4g.small / ARM64)
 *   **OS:** Amazon Linux 2023
-*   **Domain:** [slurpjob.com](http://slurpjob.com) (Honeypot) / [dashboard.slurpjob.com](https://dashboard.slurpjob.com) (UI)
+*   **Domain:** [slurpjob.com](https://slurpjob.com) (Dashboard via Cloudflare Tunnel)
+*   **Honeypot:** Direct IP scanning on all ports (AWS Public IP)
 *   **License:** [GPLv3](LICENSE)
 
 ## 🎯 What It Does

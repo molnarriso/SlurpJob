@@ -69,7 +69,7 @@ The standard lifecycle for changes is:
 2.  **Deploy:**
     *   Ask permission for the *first* deployment.
     *   Run `./deploy.ps1`. (See details below).
-3.  **Verify:** Check `https://dashboard.slurpjob.com/` (Ctrl+F5).
+3.  **Verify:** Check `https://slurpjob.com/` (Ctrl+F5).
 4.  **Confirm & Commit:** **ONLY** after stability is confirmed:
     *   Create a concise commit message.
     *   **Complex Commits:** For refactors or large features, use a **verbose, bulleted** message instead of a single line.

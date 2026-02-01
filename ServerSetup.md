@@ -16,12 +16,13 @@ To solve this, we utilize a split networking model that separates "Management Tr
 ### 1. The Secure Lane (The Dashboard)
 *   **Technology:** Cloudflare Zero Trust Tunnel.
 *   **Mechanism:** The server creates an encrypted *outbound* connection to Cloudflare.
-*   **Result:** The Dashboard (`dashboard.slurpjob.com`) resolves to Cloudflare IPs. It is protected by WAF, uses Cloudflare's clean IP reputation, and requires **zero open ports** on the server firewall.
+*   **Result:** The Dashboard (`slurpjob.com`) resolves to Cloudflare IPs. It is protected by WAF, uses Cloudflare's clean IP reputation, and requires **zero open ports** on the server firewall.
 
 ### 2. The Trap Lane (The Honeypot)
 *   **Technology:** Linux Kernel Networking (`iptables`).
-*   **Mechanism:** The server's Public IP (`slurpjob.com`) is left exposed. We use `iptables` to perform "Port redirection," acting as a funnel that sucks traffic from **all** public ports and dumps it into the SlurpJob ingestion engine.
+*   **Mechanism:** The server's Public IP (no DNS record) is left exposed. We use `iptables` to perform "Port redirection," acting as a funnel that sucks traffic from **all** public ports and dumps it into the SlurpJob ingestion engine.
 *   **Result:** The Honeypot captures 100% of traffic, including Ports 80 and 443, without interfering with the Dashboard.
+*   **Note:** Direct IP scanners will continue to hit all ports. DNS-resolving bots will follow `slurpjob.com` to Cloudflare (dashboard only).
 
 ---
 
@@ -37,9 +38,10 @@ To solve this, we utilize a split networking model that separates "Management Tr
 ### 1. DNS Configuration
 1.  **Registrar:** Update your domain's Nameservers to the ones assigned by Cloudflare (e.g., `khloe.ns.cloudflare.com`, `rommy.ns.cloudflare.com`).
 2.  **Cloudflare Dashboard (DNS Records):**
-    *   Create/Edit the **A Record** for the root domain (`slurpjob.com`).
-    *   **IP:** Your AWS Public IP.
-    *   **Proxy Status:** **DNS Only (Grey Cloud)** $\leftarrow$ *Critical! This ensures raw attacks hit your server directly.*
+    *   Create a **CNAME Record** for the root domain (`@` or `slurpjob.com`).
+    *   **Target:** Your Cloudflare Tunnel ID (e.g., `8bba5e76-5d35-4eb2-972...`).
+    *   **Proxy Status:** **Proxied (Orange Cloud)** $\leftarrow$ *This routes `slurpjob.com` through the tunnel to your dashboard.*
+    *   **Note:** Do NOT create an A record pointing to your public IP. The honeypot receives traffic via direct IP scanning only.
 
 ### 2. Tunnel Installation (ARM64)
 Run on EC2:
@@ -62,8 +64,8 @@ cloudflared tunnel login
 # Create Tunnel (Copy the UUID output!)
 cloudflared tunnel create slurp-tunnel
 
-# Route Dashboard DNS to Tunnel
-cloudflared tunnel route dns slurp-tunnel dashboard.slurpjob.com
+# Route DNS to Tunnel
+cloudflared tunnel route dns slurp-tunnel slurpjob.com
 ```
 
 ### 4. Configure Tunnel Service
@@ -83,7 +85,7 @@ tunnel: <UUID>
 credentials-file: /etc/cloudflared/<UUID>.json
 
 ingress:
-  - hostname: dashboard.slurpjob.com
+  - hostname: slurpjob.com
     service: http://localhost:5000
   - service: http_status:404
 ```
@@ -229,20 +231,20 @@ OnConnectionReceived?.Invoke(data);
 ## Phase 5: Verification
 
 ### Check Dashboard
-Visit `https://dashboard.slurpjob.com`. It should load via Cloudflare.
+Visit `https://slurpjob.com`. It should load via Cloudflare.
 
 ### Check Honeypot (TCP)
-From a different machine:
+From a different machine (using direct public IP, not domain):
 ```bash
-curl http://slurpjob.com
+curl http://3.127.242.167  # Replace with your actual public IP
 ```
 *   **Result:** Connection Reset / Empty Reply (Correct).
 *   **Dashboard:** New event appears (Source: Your IP, Port: 80).
 
 ### Check Honeypot (UDP)
-From a different machine:
+From a different machine (using direct public IP, not domain):
 ```bash
-dig @slurpjob.com google.com
+dig @3.127.242.167 google.com  # Replace with your actual public IP
 ```
 *   **Result:** Timeout (Correct).
 *   **Dashboard:** New event appears (Protocol: UDP).
