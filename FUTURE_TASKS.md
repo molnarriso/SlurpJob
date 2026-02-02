@@ -16,6 +16,36 @@ How should the tests proceed when no local db ? Should we ship example testing d
 
 make this deployable as container
 
+### Manual Filter Addition (Coming Soon)
+
+This feature allows users to manually add filters (e.g., specific country or port) via a dropdown menu in the FilterBar, instead of relying on clicks.
+
+#### Steps to Implement
+
+1.  **Update FilterBar.razor**:
+    - Build out the `add-menu` with sub-menus.
+    - **Country**: Simple text input (ISO code) + "Add" button.
+    - **Port**: Number input + "Add" button.
+    - **Protocol**: Radio buttons (TCP/UDP) or select.
+
+2.  **Filter Logic**:
+    - Use `FilterService.AddFilter(new CountryFilter(code))` etc.
+    - Ensure validation (valid standard ISO codes, port range 1-65535).
+
+3.  **UI Example (Razor)**:
+    ```razor
+    <div class="menu-section">
+        <label>Country</label>
+        <div class="input-group">
+            <input @bind="_newCountryCode" placeholder="US, CN..." />
+            <button @onclick="AddCountryFilter">Add</button>
+        </div>
+    </div>
+    ```
+
+4.  **Backend Support**:
+    - `FilterService` is already ready. No backend changes needed.
+
 ## Classifier Improvements
 
 > **Analysis Date:** 2026-02-01 | **DB Size:** 150,962 incidents | **Unclassified:** 86,129 (57%)

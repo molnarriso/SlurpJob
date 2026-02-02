@@ -2,6 +2,7 @@
 @using SlurpJob.Services
 @inject IngestionService Ingestion
 @inject PortTableService PortTable
+@inject FilterService FilterService
 @inject ILogger<LiveFeed> Logger
 @implements IDisposable
 
@@ -14,12 +15,12 @@
                     @* Row 1: Header - Segmented Row Layout *@
                     <div class="segmented-row d-flex w-100 align-items-stretch">
                         <div class="segment timestamp text-secondary">@evt.Timestamp.ToString("HH:mm:ss")</div>
-                        <div class="segment country fw-bold text-warning">
+                        <div class="segment country fw-bold text-warning" @onclick="() => FilterService.AddFilter(new CountryFilter(evt.CountryCode))" @onclick:stopPropagation="true" style="cursor: pointer;" title="Filter by @evt.CountryCode">
                             <span class="fi fi-@evt.CountryCode.ToLower()" style="margin-right: 6px;"></span>
                             [@evt.CountryCode]
                         </div>
-                        <div class="segment protocol text-info">@evt.Protocol</div>
-                        <div class="segment port-info @(evt.Protocol.ToUpper() == "TCP" ? "tcp" : "udp")">
+                        <div class="segment protocol text-info" @onclick="() => FilterService.AddFilter(new ProtocolFilter(evt.Protocol))" @onclick:stopPropagation="true" style="cursor: pointer;" title="Filter by @evt.Protocol">@evt.Protocol</div>
+                        <div class="segment port-info @(evt.Protocol.ToUpper() == "TCP" ? "tcp" : "udp")" @onclick="() => FilterService.AddFilter(new PortFilter(evt.TargetPort))" @onclick:stopPropagation="true" style="cursor: pointer;" title="Filter by Port @evt.TargetPort">
                             <span class="port-number">Port @evt.TargetPort</span>
                             @if (!string.IsNullOrEmpty(evt.PortDescription))
                             {
@@ -27,8 +28,8 @@
                             }
                         </div>
                         <div class="segment payload-proto">@evt.PayloadProtocol</div>
-                        <div class="segment classifier text-truncate flex-grow-1">@evt.ClassifierName</div>
-                        <div class="segment intent-badge @GetIntentColor(evt.Intent)">@evt.Intent</div>
+                        <div class="segment classifier text-truncate flex-grow-1" @onclick="() => FilterService.AddFilter(new ClassifierFilter(evt.ClassifierName))" @onclick:stopPropagation="true" style="cursor: pointer;" title="Filter by @evt.ClassifierName">@evt.ClassifierName</div>
+                        <div class="segment intent-badge @GetIntentColor(evt.Intent)" @onclick='() => FilterService.AddFilter(new IntentFilter(evt.Intent))' @onclick:stopPropagation="true" style="cursor: pointer;" title="Filter by @evt.Intent">@evt.Intent</div>
                     </div>
                     @* Row 2: Payload snippet only *@
                     <div class="px-2 py-1">
@@ -91,60 +92,59 @@
     {
         Logger.LogInformation("LiveFeed: Initializing...");
         
-        // Load cached recent incidents so the feed isn't empty on load
-        var recentIncidents = Ingestion.GetRecentIncidents();
-        foreach (var incident in recentIncidents.Reverse()) // Most recent first
-        {
-            var payloadBytes = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
-            _events.Add(new LiveEventViewModel
-            {
-                Timestamp = incident.Timestamp,
-                Protocol = incident.Protocol,
-                PayloadProtocol = incident.PayloadProtocol,
-                Intent = incident.Intent,
-                CountryCode = incident.CountryCode,
-                TargetPort = incident.TargetPort,
-                ClassifierId = incident.ClassifierId,
-                AttackId = incident.AttackId,
-                ClassifierName = incident.ClassifierName,
-                PayloadBlob = payloadBytes,
-                PayloadSnippet = GetPayloadSnippet(payloadBytes),
-                PortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Short,
-                FullPortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Full
-            });
-        }
+        ReloadEvents();
         
-        Logger.LogInformation($"LiveFeed: Loaded {_events.Count} cached incidents");
+        FilterService.OnFiltersChanged += ReloadEvents;
         Ingestion.OnNewIncident += HandleIncident;
+    }
+
+    private void ReloadEvents()
+    {
+        _events.Clear();
+        var recentIncidents = Ingestion.GetRecentIncidents();
+        foreach (var incident in recentIncidents.Reverse())
+        {
+            if (FilterService.MatchesAll(incident))
+            {
+                AddEventToUi(incident);
+            }
+        }
+        StateHasChanged(); // Required when called from event
+    }
+    
+    // Helper to reuse ViewModel mapping logic
+    private void AddEventToUi(IncidentLog incident)
+    {
+        var payloadBytes = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
+        _events.Insert(0, new LiveEventViewModel
+        {
+            Timestamp = incident.Timestamp,
+            Protocol = incident.Protocol,
+            PayloadProtocol = incident.PayloadProtocol,
+            Intent = incident.Intent,
+            CountryCode = incident.CountryCode,
+            TargetPort = incident.TargetPort,
+            ClassifierId = incident.ClassifierId,
+            AttackId = incident.AttackId,
+            ClassifierName = incident.ClassifierName,
+            PayloadBlob = payloadBytes,
+            PayloadSnippet = GetPayloadSnippet(payloadBytes),
+            PortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Short,
+            FullPortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Full
+        });
+        
+        if (_events.Count > 100) _events.RemoveAt(_events.Count - 1);
     }
     
     private async void HandleIncident(IncidentLog incident)
     {
         try 
         {
-            // Map to safe ViewModel IMMEDIATELY
-            var payloadBytes = incident.Evidence?.PayloadBlob ?? Array.Empty<byte>();
-            var safeVm = new LiveEventViewModel
-            {
-                Timestamp = incident.Timestamp,
-                Protocol = incident.Protocol,
-                PayloadProtocol = incident.PayloadProtocol,
-                Intent = incident.Intent,
-                CountryCode = incident.CountryCode,
-                TargetPort = incident.TargetPort,
-                ClassifierId = incident.ClassifierId,
-                AttackId = incident.AttackId,
-                ClassifierName = incident.ClassifierName,
-                PayloadBlob = payloadBytes,
-                PayloadSnippet = GetPayloadSnippet(payloadBytes),
-                PortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Short,
-                FullPortDescription = PortTable.GetPortDescription(incident.TargetPort, incident.Protocol).Full
-            };
+            if (!FilterService.MatchesAll(incident)) return;
 
             await InvokeAsync(() =>
             {
-                _events.Insert(0, safeVm);
-                if (_events.Count > 100) _events.RemoveAt(_events.Count - 1);
+                AddEventToUi(incident);
                 StateHasChanged();
             });
         }
@@ -191,6 +191,7 @@
     public void Dispose()
     {
         Ingestion.OnNewIncident -= HandleIncident;
+        FilterService.OnFiltersChanged -= ReloadEvents;
     }
 }
 

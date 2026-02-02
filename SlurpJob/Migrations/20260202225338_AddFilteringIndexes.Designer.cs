@@ -11,8 +11,8 @@ using SlurpJob.Data;
 namespace SlurpJob.Migrations
 {
     [DbContext(typeof(SlurpContext))]
-    [Migration("20260201231303_AddClassifierId")]
-    partial class AddClassifierId
+    [Migration("20260202225338_AddFilteringIndexes")]
+    partial class AddFilteringIndexes
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -39,6 +39,10 @@ namespace SlurpJob.Migrations
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("AttackId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ClassifierId")
                         .IsRequired()
@@ -76,7 +80,21 @@ namespace SlurpJob.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AttackId");
+
+                    b.HasIndex("ClassifierName");
+
+                    b.HasIndex("CountryCode");
+
+                    b.HasIndex("Intent");
+
+                    b.HasIndex("TargetPort");
+
                     b.HasIndex("Timestamp");
+
+                    b.HasIndex("Timestamp", "ClassifierName");
+
+                    b.HasIndex("Timestamp", "CountryCode");
 
                     b.ToTable("IncidentLog");
                 });

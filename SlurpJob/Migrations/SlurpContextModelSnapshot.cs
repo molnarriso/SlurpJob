@@ -77,7 +77,21 @@ namespace SlurpJob.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AttackId");
+
+                    b.HasIndex("ClassifierName");
+
+                    b.HasIndex("CountryCode");
+
+                    b.HasIndex("Intent");
+
+                    b.HasIndex("TargetPort");
+
                     b.HasIndex("Timestamp");
+
+                    b.HasIndex("Timestamp", "ClassifierName");
+
+                    b.HasIndex("Timestamp", "CountryCode");
 
                     b.ToTable("IncidentLog");
                 });

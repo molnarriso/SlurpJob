@@ -5,6 +5,7 @@
 @using SlurpJob.Models
 @using Microsoft.EntityFrameworkCore
 @inject SlurpJob.Services.IngestionService Ingestion
+@inject SlurpJob.Services.FilterService FilterService
 @inject IJSRuntime JS
 @inject IDbContextFactory<SlurpContext> DbFactory
 @implements IDisposable
@@ -16,6 +17,9 @@
         <div class="brand">SLURPJOB</div>
         <a href="https://github.com/molnarriso/SlurpJob" target="_blank" class="github-link">GITHUB</a>
     </div>
+    
+    <!-- Unified Filter Bar -->
+    <FilterBar />
 
     <div class="dashboard-top">
         <div class="map-wrapper">
@@ -32,8 +36,8 @@
              <div class="custom-legend">
                 @foreach (var item in _legendItems)
                 {
-                    <div class="legend-pill @(GetLegendStatusClass(item.Name))" 
-                         style="--hover-color: @item.Color"
+                    <div class="legend-pill" 
+                         style="--hover-color: @item.Color; cursor: pointer;"
                          @onclick="() => OnClassifierClicked(item.Name)">
                         <span class="legend-indicator" style="background-color: @item.Color"></span>
                         <span class="legend-label">@item.Name</span>
@@ -67,20 +71,24 @@
 
     private List<LegendItem> _legendItems = new();
 
-    // Centralized Filter State
-    private enum FilterMode { None, Exclusive, Filtered }
-    private class FilterState {
-        public string? SelectedKey { get; set; }
-        public FilterMode Mode { get; set; } = FilterMode.None;
-    }
-
-    private FilterState _classifierFilter = new();
-    private FilterState _countryFilter = new();
     private List<string> _currentTopClassifiers = new(); // Tracked to handle "Other" logic
 
     protected override void OnInitialized()
     {
         Ingestion.OnNewIncident += OnIncidentReceived;
+        FilterService.OnFiltersChanged += OnFiltersChanged;
+    }
+    
+    // Handler for FilterService events
+    private async void OnFiltersChanged()
+    {
+        await InvokeAsync(async () => 
+        {
+             await LoadHistoricalCountryCounts();
+             await JS.InvokeVoidAsync("slurpTimeline.update", "timelineChart");
+             // Add any specific visual updates here
+             StateHasChanged();
+        });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -116,20 +124,8 @@
     {
         if (string.IsNullOrEmpty(incident.CountryCode)) return;
 
-        // Apply Classifier Filter to Map Data
-        bool matchesClassifier = _classifierFilter.Mode == FilterMode.None;
-        if (_classifierFilter.Mode == FilterMode.Exclusive)
-        {
-            if (_classifierFilter.SelectedKey == "Other") matchesClassifier = !_currentTopClassifiers.Contains(incident.ClassifierName);
-            else matchesClassifier = incident.ClassifierName == _classifierFilter.SelectedKey;
-        }
-        else if (_classifierFilter.Mode == FilterMode.Filtered)
-        {
-             if (_classifierFilter.SelectedKey == "Other") matchesClassifier = _currentTopClassifiers.Contains(incident.ClassifierName);
-             else matchesClassifier = incident.ClassifierName != _classifierFilter.SelectedKey;
-        }
-
-        if (!matchesClassifier) return;
+        // Apply Global Filters (in-memory)
+        if (!FilterService.MatchesAll(incident)) return;
 
         InvokeAsync(async () =>
         {
@@ -141,16 +137,6 @@
 
             try
             {
-                // We just send data updates. Visual state (dimming) is handled by the client's current state (or re-pushed if needed)
-                // Actually map2d.js keeps state, but better to be stateless?
-                // For now, map2d will hold the visual state until we push an update. 
-                // But wait, if we filter OUT data here, then the map gets 0 for that country or just doesn't increment?
-                // If we filter logic here, we prevent the count from increasing in memory.
-                
-                // WAIT. If we filter specific attacks, the TOTAL count for a country should reflect that filter.
-                // So yes, we should only increment if it matches the filter.
-                // AND we need to push the new numbers.
-                
                 await JS.InvokeVoidAsync("slurpMap2D.updateHeatmap", _countryCounts);
                 
                 // Trigger blink effect
@@ -175,23 +161,9 @@
         {
             using var db = DbFactory.CreateDbContext();
             
-            // Build Query with Classifier Filter
+            // Build Query with Global Filters
             var query = db.IncidentLogs.Where(i => !string.IsNullOrEmpty(i.CountryCode));
-
-            if (_classifierFilter.Mode == FilterMode.Exclusive)
-            {
-                if (_classifierFilter.SelectedKey == "Other")
-                    query = query.Where(i => !_currentTopClassifiers.Contains(i.ClassifierName));
-                else
-                   query = query.Where(i => i.ClassifierName == _classifierFilter.SelectedKey);
-            }
-            else if (_classifierFilter.Mode == FilterMode.Filtered)
-            {
-                if (_classifierFilter.SelectedKey == "Other")
-                     query = query.Where(i => _currentTopClassifiers.Contains(i.ClassifierName));
-                else
-                    query = query.Where(i => i.ClassifierName != _classifierFilter.SelectedKey);
-            }
+            query = FilterService.ApplyAll(query); // <-- MAGIC
             
             var countryCounts = await query
                 .GroupBy(i => i.CountryCode)
@@ -220,120 +192,24 @@
     }
 
     [JSInvokable]
-    public async Task OnClassifierClicked(string classifierName)
+    public void OnClassifierClicked(string classifierName)
     {
-        // Mutually Exclusive: Reset Country Filter
-        if (_countryFilter.Mode != FilterMode.None)
-        {
-            _countryFilter = new FilterState();
-        }
-
-        // Cycle State: None -> Exclusive -> Filtered -> None
-        // Switching Category: -> Exclusive
-        
-        if (_classifierFilter.SelectedKey != classifierName)
-        {
-            _classifierFilter.SelectedKey = classifierName;
-            _classifierFilter.Mode = FilterMode.Exclusive;
-        }
-        else
-        {
-            _classifierFilter.Mode = _classifierFilter.Mode switch
-            {
-                FilterMode.None => FilterMode.Exclusive,
-                FilterMode.Exclusive => FilterMode.Filtered,
-                FilterMode.Filtered => FilterMode.None,
-                _ => FilterMode.None
-            };
-            
-            if (_classifierFilter.Mode == FilterMode.None) _classifierFilter.SelectedKey = null;
-        }
-
-        // 1. Update Map Data (Historical + Live logic)
-        await LoadHistoricalCountryCounts();
-        
-        // 2. Update Visuals (Push to JS)
-        await UpdateVisuals();
+        // Check if already exists to avoid duplicates? FilterService could handle that, but for now just add
+        FilterService.AddFilter(new ClassifierFilter(classifierName));
     }
 
     [JSInvokable]
-    public async Task OnCountryClicked(string isoCode)
+    public void OnCountryClicked(string isoCode)
     {
-        // Mutually Exclusive: Reset Classifier Filter
-        if (_classifierFilter.Mode != FilterMode.None)
-        {
-            _classifierFilter = new FilterState();
-            // We must reload historical counts to show ALL classifiers again for the new country selection
-            // Actually LoadHistoricalCountryCounts depends on ClassifierFilter, so resetting it affects map data too?
-            // Wait. LoadHistoricalCountryCounts uses _classifierFilter to filter the MAP DATA.
-            // If we reset _classifierFilter, we should reload map data?
-            // Yes, "LoadHistoricalCountryCounts" reloads the map counts based on the current classifier filter.
-            // So if we clear classifier filter, we expect map to show all attacks (filtered by country visually? No, map data is total counts).
-            // Actually, LoadHistoricalCountryCounts updates `_countryCounts`.
-            await LoadHistoricalCountryCounts();
-        }
-
-        if (_countryFilter.SelectedKey != isoCode)
-        {
-            _countryFilter.SelectedKey = isoCode;
-            _countryFilter.Mode = FilterMode.Exclusive;
-        }
-        else
-        {
-            _countryFilter.Mode = _countryFilter.Mode switch
-            {
-                FilterMode.None => FilterMode.Exclusive,
-                FilterMode.Exclusive => FilterMode.Filtered,
-                FilterMode.Filtered => FilterMode.None,
-                _ => FilterMode.None
-            };
-             if (_countryFilter.Mode == FilterMode.None) _countryFilter.SelectedKey = null;
-        }
-
-        // 1. Update Timeline Data (GetChartData will handle this on next update)
-        await JS.InvokeVoidAsync("slurpTimeline.update", "timelineChart"); // Pulls new data
-        
-        // 2. Update Visuals
-        await UpdateVisuals();
+        // Try to find full name? Only code is available from map click easily
+        FilterService.AddFilter(new CountryFilter(isoCode, ""));
     }
 
     private async Task UpdateVisuals()
     {
-        // Calculate Timeline Visuals (Hidden Labels)
-        var timelineHidden = new List<string>();
-        // Note: Timeline handles hiding visually separately from data filtering?
-        // Wait, current timeline.js hides datasets. 
-        // If we filter by Country, the data changes.
-        // If we filter by Classifier, the visuals change (hide bars).
-        
-        // Classifier Logic for Timeline Visuals
-        if (_classifierFilter.Mode == FilterMode.Exclusive && _classifierFilter.SelectedKey != null)
-        {
-            // Hide everything except Selected
-            // We need to know all categories. _currentTopClassifiers + "Other"
-            var all = new List<string>(_currentTopClassifiers); 
-            // We can't know if "Other" exists here easily without data, but reasonable guess
-            all.Add("Other");
-            
-            foreach (var c in all) if (c != _classifierFilter.SelectedKey) timelineHidden.Add(c);
-        }
-        else if (_classifierFilter.Mode == FilterMode.Filtered && _classifierFilter.SelectedKey != null)
-        {
-            timelineHidden.Add(_classifierFilter.SelectedKey);
-        }
-        
-        // Calculate Map Visuals
-        object mapVisuals = new { 
-            activeCountry = _countryFilter.SelectedKey, 
-            mode = _countryFilter.Mode.ToString() 
-        };
-
-        var visuals = new {
-            timeline = timelineHidden,
-            map = mapVisuals
-        };
-
-        await JS.InvokeVoidAsync("slurp.updateVisuals", visuals);
+        // No-op for now in unified version
+        // Logic moved to data-driven re-renders via OnFiltersChanged
+        await Task.CompletedTask;
     }
 
     [JSInvokable]
@@ -351,17 +227,8 @@
 
         using var db = DbFactory.CreateDbContext();
         
-        // Apply Country Filter
         var query = db.IncidentLogs.Where(i => i.Timestamp >= start);
-        
-        if (_countryFilter.Mode == FilterMode.Exclusive && _countryFilter.SelectedKey != null)
-        {
-            query = query.Where(i => i.CountryCode == _countryFilter.SelectedKey);
-        }
-        else if (_countryFilter.Mode == FilterMode.Filtered && _countryFilter.SelectedKey != null)
-        {
-            query = query.Where(i => i.CountryCode != _countryFilter.SelectedKey);
-        }
+        query = FilterService.ApplyAll(query); // <-- MAGIC
 
         var incidents = await query
             .OrderBy(i => i.Timestamp)
@@ -445,19 +312,12 @@
         return new { labels, datasets };
     }
 
-    private string GetLegendStatusClass(string name)
-    {
-        if (_classifierFilter.Mode == FilterMode.None) return "";
-        if (_classifierFilter.SelectedKey == name)
-        {
-            return _classifierFilter.Mode == FilterMode.Exclusive ? "selective" : "filtered";
-        }
-        return _classifierFilter.Mode == FilterMode.Exclusive ? "dimmed" : "";
-    }
+
 
     public void Dispose()
     {
         Ingestion.OnNewIncident -= OnIncidentReceived;
+        FilterService.OnFiltersChanged -= OnFiltersChanged;
         _refreshTimer?.Dispose();
     }
 }

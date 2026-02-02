@@ -14,6 +14,29 @@ public class SlurpContext : DbContext
     {
         modelBuilder.Entity<IncidentLog>()
             .HasIndex(i => i.Timestamp);
+
+        // Filtering Indexes
+        modelBuilder.Entity<IncidentLog>()
+            .HasIndex(i => i.CountryCode);
+
+        modelBuilder.Entity<IncidentLog>()
+            .HasIndex(i => i.ClassifierName);
+        
+        modelBuilder.Entity<IncidentLog>()
+            .HasIndex(i => i.AttackId);
+
+        modelBuilder.Entity<IncidentLog>()
+            .HasIndex(i => i.TargetPort);
+
+        modelBuilder.Entity<IncidentLog>()
+            .HasIndex(i => i.Intent);
+        
+        // Composite indexes for common query patterns (Time + Filter)
+        modelBuilder.Entity<IncidentLog>()
+            .HasIndex(i => new { i.Timestamp, i.CountryCode });
+        
+        modelBuilder.Entity<IncidentLog>()
+            .HasIndex(i => new { i.Timestamp, i.ClassifierName });
             
         // One-to-One relationship
         modelBuilder.Entity<IncidentLog>()

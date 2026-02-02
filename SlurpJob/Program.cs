@@ -28,6 +28,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // SlurpJob Services
 builder.Services.AddSingleton<SlurpJob.Services.PortTableService>();
 builder.Services.AddSingleton<SlurpJob.Services.IngestionService>();
+builder.Services.AddScoped<SlurpJob.Services.FilterService>(); // NEW: Per-user filter state
 builder.Services.AddHostedService(p => p.GetRequiredService<SlurpJob.Services.IngestionService>());
 
 // Classifiers (one per pattern, all run and results merged)
