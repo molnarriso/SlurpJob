@@ -10,7 +10,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class RedisClassifier : IInboundClassifier
 {
-    public string Name => "Redis Classifier";
+    public string Id => "REDIS";
 
     // Common Redis commands used in attacks
     private static readonly (string Command, string Description, Intent Intent)[] RedisCommands =
@@ -60,7 +60,7 @@ public class RedisClassifier : IInboundClassifier
             {
                 return new ClassificationResult
                 {
-                    Id = "redis-exploitation",
+                    AttackId = "redis-exploitation",
                     Name = description,
                     Protocol = PayloadProtocol.Redis,
                     Intent = intent
@@ -71,7 +71,7 @@ public class RedisClassifier : IInboundClassifier
         // Generic RESP detected
         return new ClassificationResult
         {
-            Id = "redis-exploitation",
+            AttackId = "redis-exploitation",
             Name = "Redis RESP Command",
             Protocol = PayloadProtocol.Redis,
             Intent = Intent.Exploit

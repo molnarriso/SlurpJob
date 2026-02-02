@@ -9,7 +9,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public partial class Log4JClassifier : IInboundClassifier
 {
-    public string Name => "Log4J Exploit";
+    public string Id => "LOG4J";
     
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -23,7 +23,7 @@ public partial class Log4JClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
-                Id = "log4shell",
+                AttackId = "log4shell",
                 Name = "Log4J Probe", 
                 Intent = Intent.Exploit 
             };

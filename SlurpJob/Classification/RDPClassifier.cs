@@ -10,7 +10,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class RDPClassifier : IInboundClassifier
 {
-    public string Name => "RDP Classifier";
+    public string Id => "RDP";
 
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -67,7 +67,7 @@ public class RDPClassifier : IInboundClassifier
 
             return new ClassificationResult
             {
-                Id = attackId,
+                AttackId = attackId,
                 Name = attackType,
                 Protocol = PayloadProtocol.RDP,
                 Intent = Intent.Exploit

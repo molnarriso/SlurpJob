@@ -216,12 +216,12 @@
         _formattedHex = FormatHexDump(_payloadBytes);
         _asciiDump = FormatAscii(_payloadBytes);
         
-        // Try to parse with classifier
-        var classifier = Classifiers.FirstOrDefault(c => c.Name == incident.ClassifierName);
+        // Try to parse with classifier using strict ClassifierId
+        var classifier = Classifiers.FirstOrDefault(c => c.Id == incident.ClassifierId);
         _parsedPayload = classifier?.Parse(_payloadBytes);
         
-        // Get attack info for explainer
-        _attackInfo = AttackCatalog.Get(incident.ClassifierId, incident.PayloadProtocol);
+        // Get attack info for explainer using AttackId
+        _attackInfo = AttackCatalog.Get(incident.AttackId, incident.PayloadProtocol);
         _showExplainer = true;
         
         // Default view: Parsed if available, else Hex

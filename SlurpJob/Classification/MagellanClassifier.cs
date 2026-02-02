@@ -10,7 +10,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class MagellanClassifier : IInboundClassifier
 {
-    public string Name => "Magellan Classifier";
+    public string Id => "MAGELLAN";
     
     // MGLNDD_ prefix in ASCII
     private static readonly byte[] MglnddPrefix = "MGLNDD_"u8.ToArray();
@@ -27,7 +27,7 @@ public class MagellanClassifier : IInboundClassifier
 
         return new ClassificationResult
         {
-            Id = "magellan-scanner",
+            AttackId = "magellan-scanner",
             Name = "RIPE Atlas/Magellan Scanner",
             Protocol = PayloadProtocol.Magellan,
             Intent = Intent.Recon

@@ -86,8 +86,10 @@ public static class AttackCatalog
     }
 
     /// <summary>
-    /// Get attack info by classifier ID, with fallback to protocol-level or unknown.
+    /// Get attack info by attack ID, with fallback to protocol-level or unknown.
     /// </summary>
+    /// <param name="classifierId">Attack ID (e.g., "rdp-bluekeep", "tls-scanning") from IncidentLog.AttackId</param>
+    /// <param name="protocol">Optional protocol fallback (e.g., "TLS", "RDP")</param>
     public static AttackInfo Get(string? classifierId, string? protocol = null)
     {
         // Try exact ID match (but not "unknown" - that's the fallback)
@@ -114,5 +116,6 @@ public static class AttackCatalog
     /// <summary>
     /// Check if a specific attack ID has catalog entry.
     /// </summary>
+    /// <param name="classifierId">Attack ID to check</param>
     public static bool HasEntry(string classifierId) => _catalog.ContainsKey(classifierId);
 }

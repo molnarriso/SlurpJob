@@ -49,8 +49,15 @@ The captured binary blob is passed to the Classification Engine.
 *   **Mechanism:** The engine iterates through a loaded set of `IInboundClassifier` classes.
 *   **Logic:** Simple, sequential checks using string matching, binary signatures, or header validation. (No heavy parsing libraries).
 *   **Output:** Returns a `ClassificationResult` containing:
-    *   **Name:** (e.g., "Log4J Probe", "Mirai Variant").
-    *   **Tags:** (Enum-based: `Exploit`, `Recon`, `Garbage`, `Unknown`).
+    *   **ClassifierId:** Stable identifier for the classifier class (e.g., "HTTP", "TLS", "RDP"). Used for parser lookup.
+    *   **AttackId:** Specific attack pattern identifier (e.g., "http-scanning", "tls-scanning", "rdp-bluekeep"). Used for AttackCatalog lookup.
+    *   **ClassifierName:** Human-readable display name (e.g., "HTTP Request", "TLS 1.2 ClientHello", "RDP BlueKeep Probe").
+    *   **Intent:** (Enum-based: `Exploit`, `Recon`, `Benign`, `Unknown`).
+
+**Field Cardinality:**
+*   **ClassifierId:** FIXED per classifier class (1:1 with IInboundClassifier implementation)
+*   **AttackId:** DYNAMIC per payload (1:N - one classifier can detect multiple attack types)
+*   **ClassifierName:** DYNAMIC per payload (descriptive, may vary based on attack variant)
 
 ## 4. Data Architecture (SQLite)
 The database is designed to separate "Hot" metadata (for fast charting) from "Cold" evidence (for deep inspection).
@@ -63,8 +70,11 @@ The database is designed to separate "Hot" metadata (for fast charting) from "Co
 *   `CountryCode` (String, 2-Char)
 *   `TargetPort` (Int)
 *   `Protocol` (Enum: TCP/UDP)
-*   `PrimaryTag` (Enum: `Exploit`, `Recon`, `Unknown`, etc.)
-*   `ClassifierName` (String)
+*   `PayloadProtocol` (String: HTTP, TLS, RDP, etc.)
+*   `Intent` (String: `Exploit`, `Recon`, `Unknown`, etc.)
+*   `ClassifierId` (String: Stable classifier ID for parser lookup)
+*   `AttackId` (String: Specific attack pattern for catalog lookup)
+*   `ClassifierName` (String: Human-readable display name)
 
 ### Table B: `EvidenceLocker`
 *Purpose: Archival of the raw attack data.*

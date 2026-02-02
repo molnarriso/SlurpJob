@@ -10,7 +10,7 @@ public class SIPClassifier : IInboundClassifier
 {
     private static readonly string[] SipMethods = { "REGISTER", "INVITE", "ACK", "CANCEL", "BYE", "OPTIONS" };
     
-    public string Name => "SIP Protocol";
+    public string Id => "SIP";
     
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -28,7 +28,7 @@ public class SIPClassifier : IInboundClassifier
                     {
                          return new ClassificationResult 
                         { 
-                            Id = "sip-scanning",
+                            AttackId = "sip-scanning",
                             Name = "SIP Request", 
                             Protocol = PayloadProtocol.SIP,
                             Intent = Intent.Recon

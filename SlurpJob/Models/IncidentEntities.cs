@@ -48,10 +48,27 @@ public class IncidentLog
     public string Intent { get; set; } = "Unknown"; // Recon, Exploit, etc.
     
     /// <summary>
-    /// Stable identifier for attack catalog lookup (e.g., "rdp-bluekeep")
+    /// Identifies which IInboundClassifier implementation handled this payload.
+    /// CARDINALITY: Fixed per classifier class.
+    /// PURPOSE: Used for parser lookup in PayloadInspector.
+    /// EXAMPLES: "RDP", "TLS", "REDIS", "HTTP"
     /// </summary>
     public string ClassifierId { get; set; } = "unknown";
     
+    /// <summary>
+    /// Specific attack pattern identifier for AttackCatalog lookup.
+    /// CARDINALITY: Dynamic - one classifier can return multiple different attack IDs.
+    /// PURPOSE: Maps to attack_catalog.json entries for educational explainer content.
+    /// EXAMPLES: "rdp-bluekeep", "tls-scanning", "redis-exploitation"
+    /// </summary>
+    public string AttackId { get; set; } = "unknown";
+    
+    /// <summary>
+    /// Human-readable attack description displayed in the UI live feed.
+    /// CARDINALITY: Dynamic, varies per payload analysis.
+    /// PURPOSE: Shown in dashboard live feed and inspector metadata.
+    /// EXAMPLES: "RDP BlueKeep Probe (CVE-2019-0708)", "TLS 1.0 ClientHello"
+    /// </summary>
     public string ClassifierName { get; set; } = "Unclassified";
     
     // Navigation

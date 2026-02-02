@@ -50,6 +50,8 @@
         public string Intent { get; set; } = "";
         public string CountryCode { get; set; } = "";
         public int TargetPort { get; set; }
+        public string ClassifierId { get; set; } = "unknown";
+        public string AttackId { get; set; } = "unknown";
         public string ClassifierName { get; set; } = "";
         public byte[] PayloadBlob { get; set; } = Array.Empty<byte>();
         public string PayloadSnippet { get; set; } = "";
@@ -102,6 +104,8 @@
                 Intent = incident.Intent,
                 CountryCode = incident.CountryCode,
                 TargetPort = incident.TargetPort,
+                ClassifierId = incident.ClassifierId,
+                AttackId = incident.AttackId,
                 ClassifierName = incident.ClassifierName,
                 PayloadBlob = payloadBytes,
                 PayloadSnippet = GetPayloadSnippet(payloadBytes),
@@ -128,6 +132,8 @@
                 Intent = incident.Intent,
                 CountryCode = incident.CountryCode,
                 TargetPort = incident.TargetPort,
+                ClassifierId = incident.ClassifierId,
+                AttackId = incident.AttackId,
                 ClassifierName = incident.ClassifierName,
                 PayloadBlob = payloadBytes,
                 PayloadSnippet = GetPayloadSnippet(payloadBytes),
@@ -159,6 +165,8 @@
             Intent = vm.Intent,
             CountryCode = vm.CountryCode,
             TargetPort = vm.TargetPort,
+            ClassifierId = vm.ClassifierId,
+            AttackId = vm.AttackId,
             ClassifierName = vm.ClassifierName,
             Evidence = new EvidenceLocker { PayloadBlob = vm.PayloadBlob }
         };

@@ -142,16 +142,25 @@ public class IngestionService : BackgroundService
                 var bestName = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Name 
                                ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Name
                                ?? "Unclassified";
-                var bestId = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Id 
-                             ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Id
+                var bestId = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.AttackId 
+                             ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.AttackId
                              ?? "unknown";
+                
+                // Determine which classifier won (for ClassifierId)
+                var winningResult = results.FirstOrDefault(r => r.Intent != Intent.Unknown)
+                                    ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown);
+                var winningClassifier = winningResult != null 
+                    ? _classifiers.FirstOrDefault(c => c.Classify(payload, incident.Protocol, incident.TargetPort).AttackId == winningResult.AttackId)
+                    : null;
+                var bestClassifierId = winningClassifier?.Id ?? "unknown";
 
                 // Update if anything changed
-                if (incident.ClassifierName != bestName || incident.ClassifierId != bestId)
+                if (incident.ClassifierName != bestName || incident.AttackId != bestId || incident.ClassifierId != bestClassifierId)
                 {
                     incident.PayloadProtocol = bestProtocol.ToString();
                     incident.Intent = bestIntent.ToString();
-                    incident.ClassifierId = bestId;
+                    incident.ClassifierId = bestClassifierId;
+                    incident.AttackId = bestId;
                     incident.ClassifierName = bestName;
                     updatedCount++;
                 }
@@ -245,9 +254,17 @@ public class IngestionService : BackgroundService
         var bestName = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Name 
                        ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Name
                        ?? "Unclassified";
-        var bestId = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.Id 
-                     ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Id
+        var bestId = results.FirstOrDefault(r => r.Intent != Intent.Unknown)?.AttackId 
+                     ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.AttackId
                      ?? "unknown";
+        
+        // Determine which classifier won (for ClassifierId)
+        var winningResult = results.FirstOrDefault(r => r.Intent != Intent.Unknown)
+                            ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown);
+        var winningClassifier = winningResult != null 
+            ? _classifiers.FirstOrDefault(c => c.Classify(payload, protocol, targetPort).AttackId == winningResult.AttackId)
+            : null;
+        var bestClassifierId = winningClassifier?.Id ?? "unknown";
         
         // 3. Create Incident
         var incident = new IncidentLog
@@ -259,7 +276,8 @@ public class IngestionService : BackgroundService
             Protocol = protocol,
             PayloadProtocol = bestProtocol.ToString(),
             Intent = bestIntent.ToString(),
-            ClassifierId = bestId,
+            ClassifierId = bestClassifierId,
+            AttackId = bestId,
             ClassifierName = bestName,
             Evidence = new EvidenceLocker
             {

@@ -10,7 +10,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class T3Classifier : IInboundClassifier
 {
-    public string Name => "T3 Classifier";
+    public string Id => "T3";
 
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -70,7 +70,7 @@ public class T3Classifier : IInboundClassifier
 
         return new ClassificationResult
         {
-            Id = "weblogic-t3",
+            AttackId = "weblogic-t3",
             Name = attackType,
             Protocol = PayloadProtocol.T3,
             Intent = Intent.Exploit

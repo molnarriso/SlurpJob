@@ -11,7 +11,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class JSONRPCClassifier : IInboundClassifier
 {
-    public string Name => "JSONRPC Classifier";
+    public string Id => "JSONRPC";
 
     // Common Ethereum JSON-RPC methods
     private static readonly (string Method, string Description)[] EthereumMethods = 
@@ -68,7 +68,7 @@ public class JSONRPCClassifier : IInboundClassifier
 
                 return new ClassificationResult
                 {
-                    Id = attackId,
+                    AttackId = attackId,
                     Name = description,
                     Protocol = PayloadProtocol.JSONRPC,
                     Intent = intent
@@ -79,7 +79,7 @@ public class JSONRPCClassifier : IInboundClassifier
         // Generic JSON-RPC detected but no specific method identified
         return new ClassificationResult
         {
-            Id = "ethereum-node-probe",
+            AttackId = "ethereum-node-probe",
             Name = "JSON-RPC Request",
             Protocol = PayloadProtocol.JSONRPC,
             Intent = Intent.Recon

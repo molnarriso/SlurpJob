@@ -12,7 +12,7 @@ Write-Host "Deploying to $User@$ServerIp..." -ForegroundColor DarkGray
 
 # Running Tests
 Write-Host "--- Step 1: Running Tests ---" -ForegroundColor Cyan
-dotnet test SlurpJob.Tests/SlurpJob.Tests.csproj
+dotnet test SlurpJob.Tests/SlurpJob.Tests.csproj --filter "FullyQualifiedName!~LocalDatabaseTests"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Tests failed! Deployment aborted."
     exit 1

@@ -7,7 +7,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class EmptyScanClassifier : IInboundClassifier
 {
-    public string Name => "Empty Scan";
+    public string Id => "EMPTY";
     
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -15,7 +15,7 @@ public class EmptyScanClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
-                Id = "port-scan",
+                AttackId = "port-scan",
                 Name = "Empty Scan", 
                 Intent = Intent.Recon 
             };

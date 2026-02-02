@@ -10,7 +10,7 @@ public class HTTPClassifier : IInboundClassifier
 {
     private static readonly string[] HttpVerbs = { "GET ", "POST ", "PUT ", "DELETE ", "HEAD ", "OPTIONS ", "PATCH ", "CONNECT ", "TRACE " };
     
-    public string Name => "HTTP Protocol";
+    public string Id => "HTTP";
     
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -22,7 +22,7 @@ public class HTTPClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
-                Id = "http-scanning",
+                AttackId = "http-scanning",
                 Name = "HTTP Request", 
                 Protocol = PayloadProtocol.HTTP 
             };

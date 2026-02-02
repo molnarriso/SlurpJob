@@ -7,7 +7,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class TLSClassifier : IInboundClassifier
 {
-    public string Name => "TLS Classifier";
+    public string Id => "TLS";
 
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -18,7 +18,7 @@ public class TLSClassifier : IInboundClassifier
             string version = payload[2] switch { 0x00 => "SSL 3.0", 0x01 => "TLS 1.0", 0x02 => "TLS 1.1", 0x03 => "TLS 1.2", 0x04 => "TLS 1.3", _ => "TLS" };
             string handshakeType = payload.Length >= 6 && payload[5] == 0x01 ? "ClientHello" : "Handshake";
 
-            return new ClassificationResult { Id = "tls-scanning", Name = $"{version} {handshakeType}", Protocol = PayloadProtocol.TLS, Intent = Intent.Recon };
+            return new ClassificationResult { AttackId = "tls-scanning", Name = $"{version} {handshakeType}", Protocol = PayloadProtocol.TLS, Intent = Intent.Recon };
         }
 
         return ClassificationResult.Unclassified;

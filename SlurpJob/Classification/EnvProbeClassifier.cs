@@ -8,7 +8,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class EnvProbeClassifier : IInboundClassifier
 {
-    public string Name => "Env Probe";
+    public string Id => "ENVPROBE";
     
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -23,7 +23,7 @@ public class EnvProbeClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
-                Id = "config-probe",
+                AttackId = "config-probe",
                 Name = "Env File Probe", 
                 Intent = Intent.Recon 
             };

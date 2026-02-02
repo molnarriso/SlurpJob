@@ -10,7 +10,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class RMIClassifier : IInboundClassifier
 {
-    public string Name => "RMI Classifier";
+    public string Id => "RMI";
 
     // JRMI magic bytes
     private static readonly byte[] JrmiMagic = { 0x4A, 0x52, 0x4D, 0x49 }; // "JRMI"
@@ -52,7 +52,7 @@ public class RMIClassifier : IInboundClassifier
 
             return new ClassificationResult
             {
-                Id = "java-rmi",
+                AttackId = "java-rmi",
                 Name = attackType,
                 Protocol = PayloadProtocol.RMI,
                 Intent = Intent.Exploit
@@ -79,7 +79,7 @@ public class RMIClassifier : IInboundClassifier
 
             return new ClassificationResult
             {
-                Id = "java-rmi",
+                AttackId = "java-rmi",
                 Name = attackType,
                 Protocol = PayloadProtocol.RMI,
                 Intent = Intent.Exploit

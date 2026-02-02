@@ -8,7 +8,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class SSDPClassifier : IInboundClassifier
 {
-    public string Name => "SSDP Classifier";
+    public string Id => "SSDP";
 
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -17,10 +17,10 @@ public class SSDPClassifier : IInboundClassifier
         var text = Encoding.ASCII.GetString(payload, 0, Math.Min(64, payload.Length));
 
         if (text.StartsWith("M-SEARCH", StringComparison.OrdinalIgnoreCase))
-            return new ClassificationResult { Id = "ssdp-discovery", Name = "SSDP Search", Protocol = PayloadProtocol.SSDP, Intent = Intent.Recon };
+            return new ClassificationResult { AttackId = "ssdp-discovery", Name = "SSDP Search", Protocol = PayloadProtocol.SSDP, Intent = Intent.Recon };
 
         if (text.StartsWith("NOTIFY", StringComparison.OrdinalIgnoreCase))
-            return new ClassificationResult { Id = "ssdp-discovery", Name = "SSDP Notify", Protocol = PayloadProtocol.SSDP, Intent = Intent.Recon };
+            return new ClassificationResult { AttackId = "ssdp-discovery", Name = "SSDP Notify", Protocol = PayloadProtocol.SSDP, Intent = Intent.Recon };
 
         return ClassificationResult.Unclassified;
     }

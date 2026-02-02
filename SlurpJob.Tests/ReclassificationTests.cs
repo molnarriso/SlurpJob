@@ -42,9 +42,9 @@ public class ReclassificationTests
         }
 
         var mockClassifier = new Mock<IInboundClassifier>();
-        mockClassifier.Setup(c => c.Name).Returns("MockHTTP");
+        mockClassifier.Setup(c => c.Id).Returns("HTTP");
         mockClassifier.Setup(c => c.Classify(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<int>()))
-                      .Returns(new ClassificationResult { Name = "MockHTTP", Protocol = PayloadProtocol.HTTP, Intent = Intent.Recon });
+                      .Returns(new ClassificationResult { AttackId = "http-scanning", Name = "HTTP Request", Protocol = PayloadProtocol.HTTP, Intent = Intent.Recon });
 
         var mockHubContext = new Mock<IHubContext<DashboardHub>>();
         var mockLogger = new Mock<ILogger<IngestionService>>();
@@ -70,7 +70,9 @@ public class ReclassificationTests
         using (var db = factory.CreateDbContext())
         {
             var updatedIncident = await db.IncidentLogs.FirstAsync();
-            Assert.Equal("MockHTTP", updatedIncident.ClassifierName);
+            Assert.Equal("HTTP Request", updatedIncident.ClassifierName);
+            Assert.Equal("HTTP", updatedIncident.ClassifierId);
+            Assert.Equal("http-scanning", updatedIncident.AttackId);
             Assert.Equal("HTTP", updatedIncident.PayloadProtocol);
             Assert.Equal("Recon", updatedIncident.Intent);
         }

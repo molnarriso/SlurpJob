@@ -8,7 +8,7 @@ namespace SlurpJob.Classification;
 /// </summary>
 public class SSHClassifier : IInboundClassifier
 {
-    public string Name => "SSH Protocol";
+    public string Id => "SSH";
     
     public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
     {
@@ -20,7 +20,7 @@ public class SSHClassifier : IInboundClassifier
         {
             return new ClassificationResult 
             { 
-                Id = "ssh-scanning",
+                AttackId = "ssh-scanning",
                 Name = "SSH Banner", 
                 Protocol = PayloadProtocol.SSH,
                 Intent = Intent.Recon
