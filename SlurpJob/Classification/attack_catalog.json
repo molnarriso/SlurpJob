@@ -155,5 +155,36 @@
             "https://atlas.ripe.net/",
             "https://github.com/RIPE-NCC/ripe-atlas-software-probe"
         ]
+    },
+    {
+        "id": "palo-alto-cortex",
+        "protocol": "HTTP",
+        "title": "Palo Alto Cortex Xpanse",
+        "whatIsIt": "A benign security scanner from Palo Alto Networks used for Attack Surface Management. It identifies exposed services for its customers.",
+        "impact": "None. Benign reconnaissance.",
+        "technicalNote": "User-Agent: Hello from Palo Alto Networks...",
+        "references": [
+            "https://docs-cortex.paloaltonetworks.com/r/1/Cortex-Xpanse/Scanning-activity"
+        ]
+    },
+    {
+        "id": "sipvicious-scanner",
+        "protocol": "SIP",
+        "title": "SIPVicious (Friendly Scanner)",
+        "whatIsIt": "A known malicious scanner tool (SIPVicious) used to brute-force or enumerate SIP (VoIP) systems. Despite the name 'friendly-scanner', it is aggressive.",
+        "impact": "Medium. Can lead to SIP credential theft or toll fraud.",
+        "technicalNote": "User-Agent: friendly-scanner",
+        "references": [
+            "https://github.com/EnableSecurity/sipvicious"
+        ]
+    },
+    {
+        "id": "voip-scanner",
+        "protocol": "SIP/HTTP",
+        "title": "Generic VOIP Scanner",
+        "whatIsIt": "A scanner probing for Voice over IP services.",
+        "impact": "Low/Medium. Reconnaissance for potential VoIP attacks.",
+        "technicalNote": "User-Agent: VOIP",
+        "references": []
     }
 ]

@@ -13,7 +13,7 @@ public class RMIClassifierTests
         // JRMI magic bytes + protocol version
         byte[] payload = { 0x4A, 0x52, 0x4D, 0x49, 0x00, 0x01, 0x00 };
         
-        var result = _classifier.Classify(payload, "TCP", 1099);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 1099);
         
         Assert.Equal(PayloadProtocol.RMI, result.Protocol);
         Assert.Equal(Intent.Exploit, result.Intent);
@@ -25,7 +25,7 @@ public class RMIClassifierTests
         // JRMI with StreamProtocol (0x01)
         byte[] payload = { 0x4A, 0x52, 0x4D, 0x49, 0x00, 0x01 };
         
-        var result = _classifier.Classify(payload, "TCP", 1099);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 1099);
         
         Assert.Contains("Java RMI", result.Name);
         Assert.Equal(PayloadProtocol.RMI, result.Protocol);
@@ -37,7 +37,7 @@ public class RMIClassifierTests
         // JRMI with SingleOpProtocol (0x02)
         byte[] payload = { 0x4A, 0x52, 0x4D, 0x49, 0x00, 0x02 };
         
-        var result = _classifier.Classify(payload, "TCP", 1099);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 1099);
         
         Assert.Contains("Java RMI", result.Name);
     }
@@ -48,7 +48,7 @@ public class RMIClassifierTests
         // Java serialized object magic: AC ED 00 05
         byte[] payload = { 0xAC, 0xED, 0x00, 0x05, 0x73, 0x72, 0x00, 0x00 };
         
-        var result = _classifier.Classify(payload, "TCP", 1099);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 1099);
         
         Assert.Contains("Java Deserialization", result.Name);
         Assert.Equal(PayloadProtocol.RMI, result.Protocol);
@@ -60,7 +60,7 @@ public class RMIClassifierTests
     {
         byte[] payload = { 0x47, 0x45, 0x54, 0x20, 0x2F }; // "GET /"
         
-        var result = _classifier.Classify(payload, "TCP", 80);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 80);
         
         Assert.Equal(PayloadProtocol.Unknown, result.Protocol);
     }
@@ -70,7 +70,7 @@ public class RMIClassifierTests
     {
         byte[] payload = { 0x4A, 0x52, 0x4D }; // Incomplete JRMI
         
-        var result = _classifier.Classify(payload, "TCP", 1099);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 1099);
         
         Assert.Equal(PayloadProtocol.Unknown, result.Protocol);
     }

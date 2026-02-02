@@ -12,7 +12,7 @@ public class RDPClassifier : IInboundClassifier
 {
     public string Id => "RDP";
 
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         // TPKT header: Version (1) + Reserved (1) + Length (2) = 4 bytes minimum
         if (payload.Length < 4) return ClassificationResult.Unclassified;

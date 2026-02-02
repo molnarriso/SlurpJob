@@ -15,7 +15,7 @@ public class HTTPClassifierTests
     public void Classify_ShouldIdentify_StandardGetRequest()
     {
         var payload = Encoding.ASCII.GetBytes("GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n");
-        var result = _classifier.Classify(payload, "TCP", 80);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 80);
 
         Assert.Equal("http-scanning", result.AttackId);
         Assert.Equal("HTTP Request", result.Name);
@@ -26,7 +26,7 @@ public class HTTPClassifierTests
     public void Classify_ShouldIdentify_ConnectRequest_AsProxyProbe()
     {
         var payload = Encoding.ASCII.GetBytes("CONNECT api.ip.pn:443 HTTP/1.1\r\nHost: api.ip.pn:443\r\n\r\n");
-        var result = _classifier.Classify(payload, "TCP", 80);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 80);
 
         // Expectation for the NEW behavior (test will fail initially)
         Assert.Equal("http-proxy-probe", result.AttackId); 

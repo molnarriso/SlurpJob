@@ -14,7 +14,7 @@ public class RDPClassifierTests
         // Basic TPKT header: version 3, reserved 0, length
         byte[] payload = { 0x03, 0x00, 0x00, 0x13 };
         
-        var result = _classifier.Classify(payload, "TCP", 3389);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 3389);
         
         Assert.Contains("TPKT", result.Name);
         Assert.Equal(PayloadProtocol.RDP, result.Protocol);
@@ -32,7 +32,7 @@ public class RDPClassifierTests
             0x00, 0x00, 0x00, 0x00, 0x00  // CR parameters
         };
         
-        var result = _classifier.Classify(payload, "TCP", 3389);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 3389);
         
         Assert.Equal("RDP X.224 CR", result.Name);
         Assert.Equal(PayloadProtocol.RDP, result.Protocol);
@@ -51,7 +51,7 @@ public class RDPClassifierTests
         var cookie = Encoding.ASCII.GetBytes("Cookie: mstshash=attacker\r\n");
         var payload = prefix.Concat(cookie).ToArray();
         
-        var result = _classifier.Classify(payload, "TCP", 3389);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 3389);
         
         Assert.Contains("BlueKeep", result.Name);
         Assert.Contains("CVE-2019-0708", result.Name);
@@ -64,7 +64,7 @@ public class RDPClassifierTests
     {
         byte[] payload = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\n");
         
-        var result = _classifier.Classify(payload, "TCP", 80);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 80);
         
         Assert.Equal(PayloadProtocol.Unknown, result.Protocol);
     }
@@ -74,7 +74,7 @@ public class RDPClassifierTests
     {
         byte[] payload = { 0x03, 0x00 }; // Too short
         
-        var result = _classifier.Classify(payload, "TCP", 3389);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 3389);
         
         Assert.Equal(PayloadProtocol.Unknown, result.Protocol);
     }

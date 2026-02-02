@@ -33,7 +33,7 @@ public class JSONRPCClassifier : IInboundClassifier
         ("admin_addPeer", "Ethereum Admin Peer Add"),
     };
 
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 8) return ClassificationResult.Unclassified;
 

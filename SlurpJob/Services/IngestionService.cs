@@ -133,7 +133,8 @@ public class IngestionService : BackgroundService
                 if (incident.Evidence == null) continue;
 
                 var payload = incident.Evidence.PayloadBlob;
-                var results = _classifiers.Select(c => c.Classify(payload, incident.Protocol, incident.TargetPort)).ToList();
+                var sourceIp = incident.SourceIp ?? "0.0.0.0";
+                var results = _classifiers.Select(c => c.Classify(payload, sourceIp, incident.Protocol, incident.TargetPort)).ToList();
 
                 var bestProtocol = results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Protocol ?? PayloadProtocol.Unknown;
                 var bestIntent = results.Where(r => r.Intent != Intent.Unknown)
@@ -150,7 +151,7 @@ public class IngestionService : BackgroundService
                 var winningResult = results.FirstOrDefault(r => r.Intent != Intent.Unknown)
                                     ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown);
                 var winningClassifier = winningResult != null 
-                    ? _classifiers.FirstOrDefault(c => c.Classify(payload, incident.Protocol, incident.TargetPort).AttackId == winningResult.AttackId)
+                    ? _classifiers.FirstOrDefault(c => c.Classify(payload, sourceIp, incident.Protocol, incident.TargetPort).AttackId == winningResult.AttackId)
                     : null;
                 var bestClassifierId = winningClassifier?.Id ?? "unknown";
 
@@ -244,7 +245,8 @@ public class IngestionService : BackgroundService
         }
 
         // 2. Classify (run ALL classifiers and merge results)
-        var results = _classifiers.Select(c => c.Classify(payload, protocol, targetPort)).ToList();
+        string sourceIpString = sourceIp.ToString();
+        var results = _classifiers.Select(c => c.Classify(payload, sourceIpString, protocol, targetPort)).ToList();
         
         // Merge: take best Protocol, best Intent, best Name
         var bestProtocol = results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown)?.Protocol ?? PayloadProtocol.Unknown;
@@ -262,7 +264,7 @@ public class IngestionService : BackgroundService
         var winningResult = results.FirstOrDefault(r => r.Intent != Intent.Unknown)
                             ?? results.FirstOrDefault(r => r.Protocol != PayloadProtocol.Unknown);
         var winningClassifier = winningResult != null 
-            ? _classifiers.FirstOrDefault(c => c.Classify(payload, protocol, targetPort).AttackId == winningResult.AttackId)
+            ? _classifiers.FirstOrDefault(c => c.Classify(payload, sourceIpString, protocol, targetPort).AttackId == winningResult.AttackId)
             : null;
         var bestClassifierId = winningClassifier?.Id ?? "unknown";
         

@@ -11,7 +11,7 @@ public partial class Log4JClassifier : IInboundClassifier
 {
     public string Id => "LOG4J";
     
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 10) return ClassificationResult.Unclassified;
         

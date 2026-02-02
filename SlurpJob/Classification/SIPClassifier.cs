@@ -12,13 +12,13 @@ public class SIPClassifier : IInboundClassifier
     
     public string Id => "SIP";
     
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 10) return ClassificationResult.Unclassified;
         
         try
         {
-            var text = Encoding.ASCII.GetString(payload, 0, Math.Min(50, payload.Length));
+            var text = Encoding.ASCII.GetString(payload, 0, Math.Min(512, payload.Length));
             
             foreach (var method in SipMethods)
             {
@@ -26,6 +26,29 @@ public class SIPClassifier : IInboundClassifier
                 {
                     if (text.Contains("sip:", StringComparison.OrdinalIgnoreCase) || text.Contains("SIP/2.0"))
                     {
+                        // Check for known malicious/suspicious scanners
+                        if (text.Contains("friendly-scanner", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return new ClassificationResult 
+                            { 
+                                AttackId = "sipvicious-scanner",
+                                Name = "SIPVicious Scan", 
+                                Protocol = PayloadProtocol.SIP,
+                                Intent = Intent.Exploit
+                            };
+                        }
+
+                        if (text.Contains("User-Agent: VOIP", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return new ClassificationResult 
+                            { 
+                                AttackId = "voip-scanner",
+                                Name = "Generic VOIP Scanner", 
+                                Protocol = PayloadProtocol.SIP,
+                                Intent = Intent.Recon
+                            };
+                        }
+
                          return new ClassificationResult 
                         { 
                             AttackId = "sip-scanning",

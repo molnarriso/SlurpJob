@@ -19,7 +19,7 @@ public interface IInboundClassifier
     /// <summary>
     /// Analyze a payload and return classification metadata.
     /// </summary>
-    ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort);
+    ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort);
     
     /// <summary>
     /// Parse the payload into structured fields for display in PayloadInspector.

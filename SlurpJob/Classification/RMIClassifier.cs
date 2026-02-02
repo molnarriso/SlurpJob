@@ -18,7 +18,7 @@ public class RMIClassifier : IInboundClassifier
     // Alternative: serialized Java object (used in some RMI attacks)
     private static readonly byte[] JavaSerialMagic = { 0xAC, 0xED, 0x00, 0x05 };
 
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 4) return ClassificationResult.Unclassified;
 

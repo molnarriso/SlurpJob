@@ -9,7 +9,7 @@ public class EmptyScanClassifier : IInboundClassifier
 {
     public string Id => "EMPTY";
     
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length == 0)
         {

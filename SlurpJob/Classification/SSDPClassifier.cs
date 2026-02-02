@@ -10,7 +10,7 @@ public class SSDPClassifier : IInboundClassifier
 {
     public string Id => "SSDP";
 
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 10) return ClassificationResult.Unclassified;
 

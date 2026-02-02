@@ -13,7 +13,7 @@ public class T3ClassifierTests
     {
         var payload = Encoding.ASCII.GetBytes("t3 12.2.1\nAS:255\nHL:19\n");
         
-        var result = _classifier.Classify(payload, "TCP", 7001);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 7001);
         
         Assert.Contains("WebLogic T3", result.Name);
         Assert.Equal(PayloadProtocol.T3, result.Protocol);
@@ -25,7 +25,7 @@ public class T3ClassifierTests
     {
         var payload = Encoding.ASCII.GetBytes("t3 10.3.6\nAS:255\nHL:19\n");
         
-        var result = _classifier.Classify(payload, "TCP", 7001);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 7001);
         
         Assert.Contains("v10.3", result.Name);
         Assert.Equal(PayloadProtocol.T3, result.Protocol);
@@ -36,7 +36,7 @@ public class T3ClassifierTests
     {
         var payload = Encoding.ASCII.GetBytes("t3 14.1.1\nAS:255\n");
         
-        var result = _classifier.Classify(payload, "TCP", 7001);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 7001);
         
         Assert.Contains("v14.1", result.Name);
     }
@@ -46,7 +46,7 @@ public class T3ClassifierTests
     {
         var payload = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\n");
         
-        var result = _classifier.Classify(payload, "TCP", 80);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 80);
         
         Assert.Equal(PayloadProtocol.Unknown, result.Protocol);
     }
@@ -56,7 +56,7 @@ public class T3ClassifierTests
     {
         var payload = Encoding.ASCII.GetBytes("t3 1"); // Too short
         
-        var result = _classifier.Classify(payload, "TCP", 7001);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 7001);
         
         Assert.Equal(PayloadProtocol.Unknown, result.Protocol);
     }
@@ -66,7 +66,7 @@ public class T3ClassifierTests
     {
         var payload = Encoding.ASCII.GetBytes("T3 12.2.1\nAS:255\n");
         
-        var result = _classifier.Classify(payload, "TCP", 7001);
+        var result = _classifier.Classify(payload, "1.2.3.4", "TCP", 7001);
         
         Assert.Equal(PayloadProtocol.T3, result.Protocol);
     }

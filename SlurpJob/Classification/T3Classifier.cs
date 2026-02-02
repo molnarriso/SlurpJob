@@ -12,7 +12,7 @@ public class T3Classifier : IInboundClassifier
 {
     public string Id => "T3";
 
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 6) return ClassificationResult.Unclassified;
 

@@ -72,6 +72,7 @@ public class LocalDatabaseTests
         {
             var result = classifier.Classify(
                 incident.Evidence!.PayloadBlob, 
+                incident.SourceIp ?? "0.0.0.0", 
                 incident.Protocol, 
                 incident.TargetPort
             );
@@ -146,6 +147,7 @@ public class LocalDatabaseTests
         {
             var result = classifier.Classify(
                 incident.Evidence!.PayloadBlob, 
+                incident.SourceIp ?? "0.0.0.0", 
                 incident.Protocol, 
                 incident.TargetPort
             );
@@ -185,6 +187,7 @@ public class LocalDatabaseTests
         {
             var result = classifier.Classify(
                 incident.Evidence!.PayloadBlob, 
+                incident.SourceIp ?? "0.0.0.0", 
                 incident.Protocol, 
                 incident.TargetPort
             );
@@ -224,6 +227,7 @@ public class LocalDatabaseTests
         {
             var result = classifier.Classify(
                 incident.Evidence!.PayloadBlob, 
+                incident.SourceIp ?? "0.0.0.0", 
                 incident.Protocol, 
                 incident.TargetPort
             );
@@ -263,6 +267,7 @@ public class LocalDatabaseTests
         {
             var result = classifier.Classify(
                 incident.Evidence!.PayloadBlob, 
+                incident.SourceIp ?? "0.0.0.0", 
                 incident.Protocol, 
                 incident.TargetPort
             );
@@ -302,6 +307,7 @@ public class LocalDatabaseTests
         {
             var result = classifier.Classify(
                 incident.Evidence!.PayloadBlob, 
+                incident.SourceIp ?? "0.0.0.0", 
                 incident.Protocol, 
                 incident.TargetPort
             );
@@ -341,6 +347,7 @@ public class LocalDatabaseTests
         {
             var result = classifier.Classify(
                 incident.Evidence!.PayloadBlob, 
+                incident.SourceIp ?? "0.0.0.0", 
                 incident.Protocol, 
                 incident.TargetPort
             );

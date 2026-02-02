@@ -15,7 +15,7 @@ public class MagellanClassifier : IInboundClassifier
     // MGLNDD_ prefix in ASCII
     private static readonly byte[] MglnddPrefix = "MGLNDD_"u8.ToArray();
 
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < MglnddPrefix.Length) return ClassificationResult.Unclassified;
 

@@ -43,7 +43,7 @@ public class ReclassificationTests
 
         var mockClassifier = new Mock<IInboundClassifier>();
         mockClassifier.Setup(c => c.Id).Returns("HTTP");
-        mockClassifier.Setup(c => c.Classify(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<int>()))
+        mockClassifier.Setup(c => c.Classify(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
                       .Returns(new ClassificationResult { AttackId = "http-scanning", Name = "HTTP Request", Protocol = PayloadProtocol.HTTP, Intent = Intent.Recon });
 
         var mockHubContext = new Mock<IHubContext<DashboardHub>>();

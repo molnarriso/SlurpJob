@@ -9,7 +9,7 @@ public class TLSClassifier : IInboundClassifier
 {
     public string Id => "TLS";
 
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 5) return ClassificationResult.Unclassified;
 

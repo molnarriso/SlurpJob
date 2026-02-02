@@ -12,7 +12,7 @@ public class HTTPClassifier : IInboundClassifier
     
     public string Id => "HTTP";
     
-    public ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort)
+    public ClassificationResult Classify(byte[] payload, string sourceIp, string networkProtocol, int targetPort)
     {
         if (payload.Length < 4) return ClassificationResult.Unclassified;
         
@@ -30,6 +30,15 @@ public class HTTPClassifier : IInboundClassifier
                     Protocol = PayloadProtocol.HTTP,
                     Intent = Intent.Exploit
                 };
+            }
+
+            // Check for specific known scanners (e.g. Palo Alto, VOIP)
+            // We need a bit more context than just the first 10 bytes used for verb checking
+            var fullText = Encoding.ASCII.GetString(payload, 0, Math.Min(512, payload.Length));
+            var scannerResult = HTTPScannerClassifier.Classify(fullText, sourceIp);
+            if (scannerResult != null)
+            {
+                return scannerResult;
             }
 
             return new ClassificationResult 
