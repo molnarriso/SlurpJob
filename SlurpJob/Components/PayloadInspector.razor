@@ -33,18 +33,19 @@
                         </div>
                         <div class="meta-item">
                             <span class="meta-label">Country</span>
-                            <span class="meta-value">
-                                <span class="fi fi-@_incident.CountryCode.ToLower()" style="margin-right: 4px;"></span>
-                                @_incident.CountryCode
-                            </span>
+                            <span class="meta-value"><span class="fi fi-@_incident.CountryCode.ToLower()" style="margin-right: 4px;"></span>@_incident.CountryCode</span>
                         </div>
                         <div class="meta-item">
                             <span class="meta-label">Protocol</span>
-                            <span class="meta-value protocol-badge @(_incident.Protocol.ToUpper() == "TCP" ? "tcp" : "udp")">@_incident.Protocol</span>
+                            <span class="meta-value">@_incident.Protocol</span>
                         </div>
                         <div class="meta-item">
                             <span class="meta-label">Port</span>
                             <span class="meta-value">@_incident.TargetPort @(string.IsNullOrEmpty(_portDesc) ? "" : $"({_portDesc})")</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Size</span>
+                            <span class="meta-value">@_payloadBytes.Length bytes</span>
                         </div>
                         <div class="meta-item">
                             <span class="meta-label">Classifier</span>
@@ -160,10 +161,9 @@
 
                     @* Stats Bar *@
                     <div class="payload-stats">
-                        <span class="stat">Size: @_payloadBytes.Length bytes</span>
                         @if (_payloadBytes.Length > 0)
                         {
-                            <span class="stat">First bytes: @GetMagicBytes()</span>
+                            <span class="stat">@GetMagicBytes()</span>
                         }
                     </div>
                 </div>

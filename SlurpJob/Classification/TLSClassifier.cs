@@ -32,20 +32,13 @@ public class TLSClassifier : IInboundClassifier
         var result = new ParsedPayload();
         
         // --- Record Layer ---
-        // Byte 0: Content Type (0x16)
-        // Byte 1-2: Version (e.g. 0x03 0x01)
-        // Byte 3-4: Length
-        
         string recordVersion = GetTlsVersionName(payload[1], payload[2]);
         result.Fields.Add(("Record Version", recordVersion));
 
-        if (payload.Length < 9) return result; // Not enough for Handshake header
+        if (payload.Length < 9) return result;
 
         // --- Handshake Layer ---
-        // Byte 5: Handshake Type
-        // Byte 6-8: Length
         byte handshakeType = payload[5];
-        
         if (handshakeType != 0x01) // Not ClientHello
         {
              result.Fields.Add(("Handshake", $"Type 0x{handshakeType:X2}"));
@@ -54,13 +47,10 @@ public class TLSClassifier : IInboundClassifier
 
         result.Fields.Add(("Handshake", "ClientHello"));
         
-        // Pointer to current position, starting after Handshake Header (Type:1 + Len:3 = 4 bytes)
-        // So Header starts at 5. Payload starts at 9.
         int cursor = 9;
-
         if (cursor + 2 > payload.Length) return result;
 
-        // Client Version (2 bytes)
+        // Client Version
         string clientVersion = GetTlsVersionName(payload[cursor], payload[cursor+1]);
         result.Fields.Add(("Client Version", clientVersion));
         cursor += 2;
@@ -68,9 +58,32 @@ public class TLSClassifier : IInboundClassifier
         if (cursor + 32 > payload.Length) return result;
 
         // Random (32 bytes)
-        // We just show the first few bytes as a snippet
-        string randomPrefix = BitConverter.ToString(payload, cursor, 4).Replace("-", " ");
-        result.Fields.Add(("Random", $"{randomPrefix}..."));
+        // Check if it's ASCII text (common in scanners/CTFs)
+        byte[] randomBytes = new byte[32];
+        Array.Copy(payload, cursor, randomBytes, 0, 32);
+        
+        if (IsAsciiPrintable(randomBytes))
+        {
+             string randomText = System.Text.Encoding.ASCII.GetString(randomBytes);
+             result.Fields.Add(("Random", $"\"{randomText}\" (ASCII)"));
+        }
+        else 
+        {
+            // Check if just the last 28 bytes are ASCII (RFC 5246: first 4 bytes are gmt_unix_time)
+            var suffix = new byte[28];
+            Array.Copy(randomBytes, 4, suffix, 0, 28);
+            if (IsAsciiPrintable(suffix))
+            {
+                 string timeHex = BitConverter.ToString(randomBytes, 0, 4).Replace("-", " ");
+                 string suffixText = System.Text.Encoding.ASCII.GetString(suffix);
+                 result.Fields.Add(("Random", $"{timeHex} \"{suffixText}\""));
+            }
+            else
+            {
+                 string randomPrefix = BitConverter.ToString(payload, cursor, 4).Replace("-", " ");
+                 result.Fields.Add(("Random", $"{randomPrefix}..."));
+            }
+        }
         cursor += 32;
 
         // Session ID
@@ -91,16 +104,12 @@ public class TLSClassifier : IInboundClassifier
         int cipherSuitesLen = (payload[cursor] << 8) | payload[cursor + 1];
         cursor += 2;
 
-
-
         if (cursor + cipherSuitesLen > payload.Length) return result;
         int cipherCount = cipherSuitesLen / 2;
         
-        // Extract all suites compactly
         var ciphers = new List<string>(cipherCount);
         for(int i=0; i < cipherCount; i++)
         {
-             // Format as "C02F" instead of "0xC02F" to save space
              ciphers.Add($"{payload[cursor + (i*2)]:X2}{payload[cursor + (i*2) + 1]:X2}");
         }
         string cipherDisplay = string.Join(" ", ciphers);
@@ -113,7 +122,6 @@ public class TLSClassifier : IInboundClassifier
         cursor++;
         
         if (cursor + compressionLen > payload.Length) return result;
-        // string compression = BitConverter.ToString(payload, cursor, compressionLen);
         cursor += compressionLen;
 
         // Extensions
@@ -124,6 +132,8 @@ public class TLSClassifier : IInboundClassifier
         int extensionsEnd = cursor + extensionsLen;
         if (extensionsEnd > payload.Length) extensionsEnd = payload.Length;
 
+        var extensionNames = new List<string>();
+
         while (cursor + 4 <= extensionsEnd)
         {
             int extType = (payload[cursor] << 8) | payload[cursor + 1];
@@ -131,15 +141,15 @@ public class TLSClassifier : IInboundClassifier
             cursor += 4;
 
             if (cursor + extLen > extensionsEnd) break;
+            
+            // Catalog the extension
+            extensionNames.Add(GetExtensionName(extType));
 
             if (extType == 0x0000) // Server Name Indication (SNI)
             {
-                // Parse SNI
-                // List Length (2) -> Type (1) -> Name Length (2) -> Name
                 if (extLen >= 5)
                 {
                     int sniListLen = (payload[cursor] << 8) | payload[cursor + 1];
-                    // We assume first entry is host_name (type 0)
                     if (payload[cursor + 2] == 0x00) // HostName type
                     {
                         int nameLen = (payload[cursor + 3] << 8) | payload[cursor + 4];
@@ -151,11 +161,72 @@ public class TLSClassifier : IInboundClassifier
                     }
                 }
             }
+            else if (extType == 0x0010) // ALPN
+            {
+                if (extLen >= 2)
+                {
+                    int alpnListLen = (payload[cursor] << 8) | payload[cursor + 1];
+                    int alpnEnd = cursor + 2 + alpnListLen;
+                    if (alpnEnd <= extensionsEnd)
+                    {
+                        var protocols = new List<string>();
+                        int pCursor = cursor + 2;
+                        while(pCursor < alpnEnd)
+                        {
+                            int pLen = payload[pCursor];
+                            pCursor++;
+                            if (pCursor + pLen > alpnEnd) break;
+                            
+                            string protocol = System.Text.Encoding.ASCII.GetString(payload, pCursor, pLen);
+                            protocols.Add(protocol);
+                            pCursor += pLen;
+                        }
+                        result.Fields.Add(("ALPN", string.Join(", ", protocols)));
+                    }
+                }
+            }
 
             cursor += extLen;
         }
+        
+        if (extensionNames.Count > 0)
+        {
+            result.Fields.Add(("Extensions", string.Join(", ", extensionNames)));
+        }
 
         return result;
+    }
+
+    private bool IsAsciiPrintable(byte[] data)
+    {
+        foreach (byte b in data)
+        {
+            if (b < 32 || b > 126) return false;
+        }
+        return true;
+    }
+
+    private string GetExtensionName(int type)
+    {
+        return type switch
+        {
+            0x0000 => "SNI",
+            0x0005 => "StatusRequest",
+            0x000A => "SupportedGroups",
+            0x000B => "ECPointFormats",
+            0x000D => "SigAlgos",
+            0x000F => "Heartbeat",
+            0x0010 => "ALPN",
+            0x0012 => "SCT",
+            0x0015 => "Padding",
+            0x0017 => "ExtendedMasterSecret",
+            0x0023 => "SessionTicket",
+            0x002B => "SupportedVersions",
+            0x002D => "PSKKeyExchangeModes",
+            0x0033 => "KeyShare",
+            0x3374 => "RenegotiationInfo",
+            _ => $"0x{type:X4}"
+        };
     }
 
     private string GetTlsVersionName(byte major, byte minor)
