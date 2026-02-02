@@ -16,10 +16,6 @@ public class SIPClassifier : IInboundClassifier
     {
         if (payload.Length < 10) return ClassificationResult.Unclassified;
         
-        // SIP messages are text-based, so looking at the start is usually sufficient.
-        // We look for: <METHOD> <URI> SIP/2.0
-        // e.g., "REGISTER sip:..."
-        
         try
         {
             var text = Encoding.ASCII.GetString(payload, 0, Math.Min(50, payload.Length));
@@ -28,10 +24,6 @@ public class SIPClassifier : IInboundClassifier
             {
                 if (text.StartsWith(method, StringComparison.OrdinalIgnoreCase))
                 {
-                    // Further validation: check if it looks like SIP structure
-                    // Many SIP messages start with "REGISTER sip:" or "OPTIONS sip:"
-                    // Or they might have SIP/2.0 in the first line.
-                    
                     if (text.Contains("sip:", StringComparison.OrdinalIgnoreCase) || text.Contains("SIP/2.0"))
                     {
                          return new ClassificationResult 
@@ -39,17 +31,49 @@ public class SIPClassifier : IInboundClassifier
                             Id = "sip-scanning",
                             Name = "SIP Request", 
                             Protocol = PayloadProtocol.SIP,
-                            Intent = Intent.Recon // Default to Recon, but could be Exploit for flooding
+                            Intent = Intent.Recon
                         };   
                     }
                 }
             }
         }
-        catch 
-        {
-            // Ignore encoding errors
-        }
+        catch { }
         
         return ClassificationResult.Unclassified;
+    }
+    
+    public ParsedPayload? Parse(byte[] payload)
+    {
+        if (payload.Length < 10) return null;
+        
+        try
+        {
+            var text = Encoding.ASCII.GetString(payload);
+            var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            if (lines.Length == 0) return null;
+            
+            var result = new ParsedPayload();
+            var parts = lines[0].Split(' ');
+            if (parts.Length >= 1) result.Fields.Add(("Method", parts[0]));
+            if (parts.Length >= 2) result.Fields.Add(("URI", parts[1]));
+            
+            for (int i = 1; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                if (string.IsNullOrWhiteSpace(line)) break;
+                var colonIdx = line.IndexOf(':');
+                if (colonIdx > 0)
+                {
+                    var name = line[..colonIdx].Trim();
+                    var val = line[(colonIdx + 1)..].Trim();
+                    if (name.Equals("From", StringComparison.OrdinalIgnoreCase) ||
+                        name.Equals("To", StringComparison.OrdinalIgnoreCase) ||
+                        name.Equals("Call-ID", StringComparison.OrdinalIgnoreCase))
+                        result.Fields.Add((name, val.Length <= 60 ? val : val[..60] + "..."));
+                }
+            }
+            return result;
+        }
+        catch { return null; }
     }
 }

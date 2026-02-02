@@ -9,6 +9,11 @@ public class AttackInfo
     /// Stable identifier matching ClassificationResult.Id
     /// </summary>
     public required string Id { get; init; }
+
+    /// <summary>
+    /// Protocol name (e.g. "RDP", "SSH") for fallback lookups
+    /// </summary>
+    public string? Protocol { get; init; }
     
     /// <summary>
     /// Short title for the attack type

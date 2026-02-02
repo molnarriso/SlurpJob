@@ -6,6 +6,12 @@ public interface IInboundClassifier
 {
     string Name { get; }
     ClassificationResult Classify(byte[] payload, string networkProtocol, int targetPort);
+    
+    /// <summary>
+    /// Parse the payload into structured fields for display.
+    /// Default implementation returns null (no parsing available).
+    /// </summary>
+    ParsedPayload? Parse(byte[] payload) => null;
 }
 
 public class ClassificationResult
@@ -24,4 +30,13 @@ public class ClassificationResult
     public Intent Intent { get; set; } = Intent.Unknown;
     
     public static ClassificationResult Unclassified => new();
+}
+
+/// <summary>
+/// Structured representation of a parsed payload for display in the inspector.
+/// </summary>
+public class ParsedPayload
+{
+    public List<(string Label, string Value)> Fields { get; set; } = new();
+    public string? FormattedBody { get; set; }
 }

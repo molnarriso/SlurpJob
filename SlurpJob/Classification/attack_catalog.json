@@ -1,0 +1,150 @@
+[
+    {
+        "id": "rdp-scanning",
+        "protocol": "RDP",
+        "title": "RDP Scanner",
+        "whatIsIt": "A probe attempting to identify Windows Remote Desktop Protocol (RDP) services. These scans check if port 3389 is open and if it speaks the RDP protocol.",
+        "impact": "Low. This is usually reconnaissance to find exposed windows servers.",
+        "technicalNote": "Uses X.224 Connection Request (CR) TPDU.",
+        "references": []
+    },
+    {
+        "id": "rdp-bluekeep",
+        "title": "BlueKeep RDP Exploit",
+        "whatIsIt": "An attempt to exploit the BlueKeep vulnerability (CVE-2019-0708) in Windows RDP. This allows remote code execution without authentication.",
+        "impact": "Critical. Successful exploitation gives full control over the server.",
+        "technicalNote": "Often identified by 'mstshash' cookie or specific channel creation requests.",
+        "references": [
+            "https://nvd.nist.gov/vuln/detail/CVE-2019-0708"
+        ]
+    },
+    {
+        "id": "http-scanning",
+        "protocol": "HTTP",
+        "title": "HTTP Scanner",
+        "whatIsIt": "A generic HTTP request probing for web servers.",
+        "impact": "Low to Medium depending on the path requested.",
+        "technicalNote": "Standard GET/POST requests.",
+        "references": []
+    },
+    {
+        "id": "ssh-scanning",
+        "protocol": "SSH",
+        "title": "SSH Scanner",
+        "whatIsIt": "An attempt to connect to SSH services, often to brute-force credentials or identify versions.",
+        "impact": "Low. Reconnaissance.",
+        "technicalNote": "Sends SSH version string (e.g. SSH-2.0-...).",
+        "references": []
+    },
+    {
+        "id": "sip-scanning",
+        "protocol": "SIP",
+        "title": "SIP Scanner",
+        "whatIsIt": "Probing for VoIP systems. Often SIPv2 REGISTER attempts to find valid extensions or brute force passwords.",
+        "impact": "Low. Reconnaissance.",
+        "technicalNote": "Uses SIP methods like REGISTER, OPTIONS, INVITE.",
+        "references": []
+    },
+    {
+        "id": "redis-exploitation",
+        "protocol": "Redis",
+        "title": "Redis Exploit Attempt",
+        "whatIsIt": "An attempt to run commands on a Redis server, often to gain RCE or steal data. Unauthenticated Redis is a common target.",
+        "impact": "High. Can lead to server compromise via CONFIG SET or data loss via FLUSHALL.",
+        "technicalNote": "RESP protocol. Common commands: CONFIG, SLAVEOF, FLUSHALL.",
+        "references": []
+    },
+    {
+        "id": "ethereum-node-probe",
+        "protocol": "JSONRPC",
+        "title": "Ethereum Node Scanner",
+        "whatIsIt": "Scanning for open Ethereum/Blockchain nodes (JSON-RPC) to steal wallets or mine crypto.",
+        "impact": "High if funds are in the node wallet.",
+        "technicalNote": "JSON-RPC calls like eth_blockNumber, eth_getBalance.",
+        "references": []
+    },
+    {
+        "id": "ethereum-wallet-drain",
+        "title": "Ethereum Wallet Drain Attempt",
+        "whatIsIt": "Attempt to unlock accounts or send transactions from an open Ethereum node.",
+        "impact": "Critical. Direct financial loss.",
+        "technicalNote": "personal_unlockAccount, eth_sendTransaction.",
+        "references": []
+    },
+    {
+        "id": "ssdp-discovery",
+        "protocol": "SSDP",
+        "title": "SSDP/UPnP Discovery",
+        "whatIsIt": "Simple Service Discovery Protocol probe, used to find UPnP devices (routers, cameras). Can be used for reflection DDoS.",
+        "impact": "Low (Recon) or Medium (DDoS amplification).",
+        "technicalNote": "UDP 1900. M-SEARCH * HTTP/1.1.",
+        "references": []
+    },
+    {
+        "id": "tls-scanning",
+        "protocol": "TLS",
+        "title": "TLS/SSL Scanner",
+        "whatIsIt": "Scanning for SSL/TLS services to identify certificates or versions.",
+        "impact": "Low. Reconnaissance.",
+        "technicalNote": "ClientHello handshake.",
+        "references": []
+    },
+    {
+        "id": "weblogic-t3",
+        "protocol": "T3",
+        "title": "WebLogic T3 Exploit",
+        "whatIsIt": "Attacks against Oracle WebLogic's T3 protocol, often attempting RCE via deserialization.",
+        "impact": "Critical. RCE is common in WebLogic vulnerabilities.",
+        "technicalNote": "Format: t3 <version>.",
+        "references": [
+            "https://nvd.nist.gov/vuln/detail/CVE-2020-14882"
+        ]
+    },
+    {
+        "id": "java-rmi",
+        "protocol": "RMI",
+        "title": "Java RMI Exploit",
+        "whatIsIt": "Java RMI or Deserialization attacks. Attempts to execute code by sending malicious serialized objects.",
+        "impact": "Critical. Java deserialization often leads to RCE.",
+        "technicalNote": "JRMI header or AC ED 00 05 magic bytes.",
+        "references": []
+    },
+    {
+        "id": "log4shell",
+        "title": "Log4Shell (CVE-2021-44228)",
+        "whatIsIt": "Attempt to exploit Log4j 2 vulnerability via JNDI injection.",
+        "impact": "Critical. Allows full RCE.",
+        "technicalNote": "${jndi:ldap://...}",
+        "references": [
+            "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"
+        ]
+    },
+    {
+        "id": "config-probe",
+        "title": "Config File Probe",
+        "whatIsIt": "Bot looking for sensitive configuration files like .env, .git/config, or AWS credentials.",
+        "impact": "High. Leaks secrets and credentials.",
+        "technicalNote": "HEAD/GET /.env",
+        "references": []
+    },
+    {
+        "id": "port-scan",
+        "title": "Port Scan (Empty)",
+        "whatIsIt": "A TCP connection that sends no data and disconnects. Used to check if a port is open.",
+        "impact": "Low. Pure reconnaissance.",
+        "technicalNote": "Zero-length payload.",
+        "references": []
+    },
+    {
+        "id": "magellan-scanner",
+        "protocol": "Magellan",
+        "title": "RIPE Atlas / Magellan",
+        "whatIsIt": "Internet measurement probes from RIPE Atlas. These are NOT malicious attacks but research scanners measuring internet connectivity.",
+        "impact": "None. Benign research traffic.",
+        "technicalNote": "Payload starts with MGLNDD_",
+        "references": [
+            "https://atlas.ripe.net/",
+            "https://github.com/RIPE-NCC/ripe-atlas-software-probe"
+        ]
+    }
+]

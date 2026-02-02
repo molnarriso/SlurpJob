@@ -2,6 +2,7 @@
 @using SlurpJob.Classification
 @using SlurpJob.Services
 @inject PortTableService PortTable
+@inject IEnumerable<IInboundClassifier> Classifiers
 @inject IJSRuntime JS
 
 @if (Show)
@@ -215,9 +216,9 @@
         _formattedHex = FormatHexDump(_payloadBytes);
         _asciiDump = FormatAscii(_payloadBytes);
         
-        // Try to parse with protocol-specific parser
-        var parser = PayloadParserRegistry.GetParser(incident.ClassifierName);
-        _parsedPayload = parser?.Parse(_payloadBytes);
+        // Try to parse with classifier
+        var classifier = Classifiers.FirstOrDefault(c => c.Name == incident.ClassifierName);
+        _parsedPayload = classifier?.Parse(_payloadBytes);
         
         // Get attack info for explainer
         _attackInfo = AttackCatalog.Get(incident.ClassifierId, incident.PayloadProtocol);

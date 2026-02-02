@@ -4,61 +4,58 @@ This folder contains classes responsible for analyzing and classifying incoming 
 These classifiers are consumed by `SlurpJob.Services.IngestionService` which aggregates their results to produce a final `IncidentLog`.
 
 ## IInboundClassifier.cs
-Interface defining the contract for all classifier implementations. Returns `ClassificationResult` with Id, Name, Protocol, and Intent.
-
-## IPayloadParser.cs
-Interface for protocol-specific payload parsers used by PayloadInspector. Parsers extract structured fields from raw payloads.
-
-## PayloadParserRegistry.cs
-Static registry mapping classifier names to parser implementations. Used by PayloadInspector to find the right parser.
+Interface defining the contract for all classifier implementations. Returns `ClassificationResult` (Id, Name, Protocol, Intent). Also defines the optional `Parse(byte[])` method for extracting structured data from payloads.
 
 ## AttackInfo.cs
 Model for educational attack information including Title, WhatIsIt, Impact, TechnicalNote, and References (CVE links, MITRE ATT&CK).
 
 ## AttackCatalog.cs
-Static catalog of 15+ attack descriptions keyed by classifier Id. Provides fallback to protocol-level descriptions. Used by PayloadInspector to display educational content.
+Static catalog of attack descriptions keyed by classifier Id. Loads data from `attack_catalog.json`. Provides fallback to protocol-level descriptions. Used by PayloadInspector to display educational content.
 
-## Parsers/
-Folder containing 13 protocol-specific parsers (HTTPParser, SIPParser, JSONRPCParser, RedisParser, SSHParser, SSDPParser, TLSParser, RDPParser, RMIParser, T3Parser, Log4JParser, EnvProbeParser, EmptyParser).
+## attack_catalog.json
+JSON file containing the definitions for all known attacks and protocol fallbacks. This file is copied to the output directory and loaded by `AttackCatalog` at runtime.
 
-## HTTPClassifier.cs
-Detects HTTP protocol by checking for standard HTTP verbs (GET, POST, etc.) at payload start.
+## [ClassifierName].cs Files
+Each classifier (e.g., `HTTPClassifier.cs`, `SSHClassifier.cs`) implements `IInboundClassifier`. It contains both the `Classify()` logic for detection and the `Parse()` logic for extracting details for the UI.
 
-## SSHClassifier.cs
-Detects SSH protocol by checking for SSH- banner prefix.
+- `HTTPClassifier.cs`: Detects HTTP methods (GET, POST, etc). Parses headers.
+- `SSHClassifier.cs`: Detects SSH banners. Parses version strings.
+- `Log4JClassifier.cs`: Detects JNDI injection attempts. Parses target protocol/host.
+- `EnvProbeClassifier.cs`: Detects config file probes. Parses target filename.
+- `EmptyScanClassifier.cs`: Detects zero-length payloads.
+- `SSDPClassifier.cs`: Detects SSDP M-SEARCH/NOTIFY. Parses headers.
+- `SIPClassifier.cs`: Detects SIP methods (REGISTER, INVITE). Parses headers.
+- `TLSClassifier.cs`: Detects TLS ClientHello (0x1603). Parses SNI and version.
+- `RDPClassifier.cs`: Detects RDP/X.224 (0x0300). Identifies BlueKeep. Parses cookie/mstshash.
+- `JSONRPCClassifier.cs`: Detects Ethereum JSON-RPC. Parses method and params.
+- `RedisClassifier.cs`: Detects Redis RESP. Parses commands and keys.
+- `RMIClassifier.cs`: Detects Java RMI/Serialization. Parses gadget chains.
+- `T3Classifier.cs`: Detects WebLogic T3. Parses version and known CVE payloads.
+- `MagellanClassifier.cs`: Detects RIPE Atlas probes (MGLNDD_). Parses scan target.
 
-## Log4JClassifier.cs
-Detects Log4J/Log4Shell JNDI injection exploit attempts.
+---
 
-## EnvProbeClassifier.cs
-Detects probing for sensitive config files (.env, .git/config).
+### Checklist: Adding a New Classifier
 
-## EmptyScanClassifier.cs
-Classifies empty payloads as reconnaissance scans.
+When adding a new classifier, follow these steps to ensuring full integration:
 
-## SSDPClassifier.cs
-Detects SSDP (Simple Service Discovery Protocol) traffic (M-SEARCH and NOTIFY) used for UPnP discovery.
+1.  **Create Classifier Class**:
+    - Create `[Protocol]Classifier.cs` implementing `IInboundClassifier`.
+    - Implement `Classify()` to return `ClassificationResult`.
+    - Implement `Parse()` to return `ParsedPayload` (or return null if not applicable).
 
-## SIPClassifier.cs
-Detects SIP (Session Initiation Protocol) for VoIP enumeration.
+2.  **Register Service**:
+    - Add `builder.Services.AddSingleton<IInboundClassifier, [Protocol]Classifier>();` in `Program.cs`.
 
-## TLSClassifier.cs
-Detects TLS ClientHello handshakes by checking for 0x1603 prefix. Identifies TLS version (1.0/1.1/1.2/1.3). Intent: Recon.
+3.  **Update Attack Catalog**:
+    - Add a new entry to `Classification/attack_catalog.json` with the `id` returned by your classifier.
+    - Include `title`, `whatIsIt`, `impact`, and `technicalNote`.
+    - If your classifier uses a specific protocol name, ensure the JSON entry has the `protocol` field set for fallback lookups.
 
-## RDPClassifier.cs
-Detects RDP/X.224 Connection Requests via TPKT protocol (0x0300 prefix). Identifies BlueKeep (CVE-2019-0708) probes. Intent: Exploit.
+4.  **Verify**:
+    - Run the application and send a test payload.
+    - Verify classification in the Live Feed.
+    - Click the event to open Payload Inspector:
+        - Check that the **Educational Info** (from `attack_catalog.json`) loads correctly.
+        - Check that the **Parsed View** (from `Parse()`) shows extracted fields.
 
-## JSONRPCClassifier.cs
-Detects JSON-RPC requests used for Ethereum node scanning. Identifies specific methods (eth_blockNumber, personal_unlockAccount, etc.). Intent: Recon/Exploit depending on method.
-
-## RedisClassifier.cs
-Detects Redis RESP protocol commands. Identifies specific attack commands (CONFIG GET, FLUSHALL, SLAVEOF, etc.). Intent: Exploit/Recon.
-
-## RMIClassifier.cs  
-Detects Java RMI (Remote Method Invocation) protocol via JRMI magic. Also detects Java serialized objects for deserialization attacks. Intent: Exploit.
-
-## T3Classifier.cs
-Detects Oracle WebLogic T3 protocol. Identifies version-specific probes and CVE payloads (CVE-2019-2725, CVE-2020-14882). Intent: Exploit.
-
-## MagellanClassifier.cs
-Detects MGLNDD (RIPE Atlas/Magellan) internet measurement scanner traffic by checking for "MGLNDD_" prefix. Intent: Recon.
