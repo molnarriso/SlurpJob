@@ -28,6 +28,15 @@
         "references": []
     },
     {
+        "id": "http-proxy-probe",
+        "protocol": "HTTP",
+        "title": "HTTP Proxy Probe",
+        "whatIsIt": "A request using the HTTP CONNECT method (e.g. CONNECT api.ip.pn:443). The attacker is checking if your server allows open proxying to external domains.",
+        "impact": "Medium. If successful (HTTP 200), your server becomes an open proxy for malicious traffic.",
+        "technicalNote": "CONNECT method. Intent is Exploit/Abuse.",
+        "references": []
+    },
+    {
         "id": "ssh-scanning",
         "protocol": "SSH",
         "title": "SSH Scanner",

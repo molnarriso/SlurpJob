@@ -20,11 +20,24 @@ public class HTTPClassifier : IInboundClassifier
         
         if (HttpVerbs.Any(v => text.StartsWith(v, StringComparison.Ordinal)))
         {
+            // Special handling for CONNECT (Proxy Probe)
+            if (text.StartsWith("CONNECT ", StringComparison.Ordinal))
+            {
+                return new ClassificationResult 
+                { 
+                    AttackId = "http-proxy-probe",
+                    Name = "HTTP Proxy Probe", 
+                    Protocol = PayloadProtocol.HTTP,
+                    Intent = Intent.Exploit
+                };
+            }
+
             return new ClassificationResult 
             { 
                 AttackId = "http-scanning",
                 Name = "HTTP Request", 
-                Protocol = PayloadProtocol.HTTP 
+                Protocol = PayloadProtocol.HTTP,
+                Intent = Intent.Unknown
             };
         }
         
