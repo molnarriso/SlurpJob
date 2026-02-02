@@ -2,6 +2,8 @@ c:\Development\SlurpJob\AGENTS.md
 
 This is the root directory of the SlurpJob project, a network telescope and exploit identifier with public dashboard.
 
+IMPORTANT ! Always remember : If you want to read/write/access a file in path "DirA/DirB/file", you MUST first read "AGENTS.md", "DirA/AGENTS.md" and "DirA/DirB/AGENTS.md" !
+
 ## SlurpJob
 This folder contains the main application source code (ASP.NET Core / Blazor Server).
 

@@ -9,6 +9,9 @@ Where the three panels are stacked vertically. Distinguish between modes by avai
 ### Better 2D Map
 Antarctica is too large, Europe too small.
 
+### Handle testing against data
+How should the tests proceed when no local db ? Should we ship example testing db in repo ? Some better solution ? Goal is to have tests run fast and not depend on external resources.
+
 ## Classifier Improvements
 
 > **Analysis Date:** 2026-02-01 | **DB Size:** 150,962 incidents | **Unclassified:** 86,129 (57%)

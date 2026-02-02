@@ -6,6 +6,7 @@ This workspace uses AGENTS.md to help agents complete tasks by providing crucial
 - Each folder MUST have AGENTS.md file.
 - This file MUST be brief
 - This file MUST be read in full by an agent everytime any file/folder is accesed, read or modified
+- Repeat : if you want to read a file in path "DirA/DirB/file", you MUST first read "AGENTS.md", "DirA/AGENTS.md" and "DirA/DirB/AGENTS.md"
 - This file MUST list every file and folder in the current folder and briefly describe each one. This description must stay up to date, be short and list all the critical roles of the items. The goal of these files to allow agents to quickly orient themselves without not noticing implementation in files. 
 - When a file is updated and the file/folder changes significantly, the AGENTS.md file also NEEEDs to be updated
 - When accesing a folder/file several folders deep, an AGENTS.md file MUST be read at every level.
